@@ -13,6 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+#todays real target - tv build. setting this permanently
+USE_TV_BUILD := true
+
 # Inherit from those products. Most specific first.
 $(call inherit-product,$(SRC_TARGET_DIR)/product/core_64_bit.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/full_base_telephony.mk)
@@ -23,7 +27,7 @@ $(call inherit-product, device/google/atv/products/atv_base.mk)
 
 TARGET_ATV_FORCE_1080_SCALING := false
 $(call inherit-product, vendor/lineage/config/common_tv.mk)
-$(call inherit-product,$(LOCAL_PATH)/../device.mk)
+$(call inherit-product, device/generic/x86_64_tablet/device.mk)
 
 
 endif
