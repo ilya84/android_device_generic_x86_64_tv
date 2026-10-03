@@ -16,6 +16,8 @@
 
 #todays real target - tv build. setting this permanently
 USE_TV_BUILD := true
+PRODUCT_RECOVERY_DENSITY := xhdpi
+PRODUCT_RECOVERY_DPI := 213
 
 # Inherit from those products. Most specific first.
 $(call inherit-product,$(SRC_TARGET_DIR)/product/core_64_bit.mk)
@@ -54,3 +56,22 @@ PRODUCT_NAME := lineage_x86_64_tablet
 PRODUCT_BRAND := Android-x86
 PRODUCT_DEVICE := x86_64_tablet
 PRODUCT_MODEL := Generic Android-x86_64
+
+PRODUCT_PACKAGES_REMOVE += \
+    Recorder \
+    Dialer \
+    SubsystemTelephony \
+    TelephonyProvider \
+    Contacts \
+    CellBroadcastReceiver \
+    CellBroadcastServiceModule \
+    NfcNci \
+    ContactsProviderPicker \
+    MmsService \
+    CellBroadcastService \
+    Stk \
+    Telecom \
+    Aperture \
+    DeviceAsWebcam \
+    EmergencyInfo \
+    Messaging

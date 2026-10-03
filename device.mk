@@ -284,3 +284,11 @@ PRODUCT_VENDOR_PROPERTIES += drm.service.enabled=true
 PRODUCT_REQUIRES_INSECURE_EXECMEM_FOR_SWIFTSHADER := true
 
 $(call inherit-product-if-exists, hardware/x86power/x86power.mk)
+
+# force memfd; default ashmem removed
+# and speedup first start, otherwise it longs for some hours
+PRODUCT_PROPERTY_OVERRIDES += \
+    sys.use_memfd=true
+    pm.dexopt.first-boot=verify \
+    pm.dexopt.boot-after-ota=verify \
+    pm.dexopt.bg-dexopt=speed-profile
