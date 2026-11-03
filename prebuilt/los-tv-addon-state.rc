@@ -1,0 +1,24 @@
+# los-tv: состояние плитки «Проприетарные компоненты» (2026-11-01).
+#
+# Проверка запускается после загрузки (pm уже готов), уведомление — от
+# user shell, иначе TV-панель его не покажет (см. tvres-notify).
+
+service los-tv-addon-check /system/bin/sh /system/bin/los-tv-addon-check.sh
+    oneshot
+    disabled
+    user root
+    group root
+    class core
+
+service los-tv-addon-notify /system/bin/sh /system/bin/los-tv-addon-notify.sh
+    oneshot
+    disabled
+    user shell
+    group shell
+    class core
+
+on property:sys.boot_completed=1
+    start los-tv-addon-check
+
+on property:sys.los_tv.addon_needed=1
+    start los-tv-addon-notify

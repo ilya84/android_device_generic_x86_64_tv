@@ -110,7 +110,7 @@ PRODUCT_PACKAGES += \
     x86_dhcpclient.recovery
 
 # A collection of scripts at scripts/
-PRODUCT_PACKAGES += blisspath boot-mode-selection.sh
+PRODUCT_PACKAGES += blisspath boot-mode-selection.sh los-tv-boot-mode.sh
 
 ## ATV
 PRODUCT_PACKAGES += \

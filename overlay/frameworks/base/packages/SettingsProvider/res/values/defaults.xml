@@ -24,4 +24,8 @@
     <bool name="def_accelerometer_rotation">true</bool>
     <!-- default setting for Settings.System.POWERMENU_ADVANCED -->
     <bool name="def_powermenu_advanced">false</bool>
+    <!-- los-tv: a TV must be allowed to turn the screen off, otherwise the
+         screensaver (Dream) never starts. Users can still enable "Stay awake"
+         in developer options. -->
+    <bool name="def_stay_on_while_plugged_in">false</bool>
 </resources>

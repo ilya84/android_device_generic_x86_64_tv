@@ -1,0 +1,12 @@
+# Предустановка приложений в /data при первом старте (2026-10-13).
+# Ждём sys.boot_completed: package-менеджер готов, /data расшифрован.
+on property:sys.boot_completed=1
+    start preinstall-apps
+
+service preinstall-apps /system/bin/sh /system/bin/preinstall-apps.sh
+    oneshot
+    disabled
+    user system
+    group system
+    class core
+    ioprio rt 5

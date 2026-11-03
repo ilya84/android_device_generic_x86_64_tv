@@ -91,6 +91,10 @@ function init_misc()
     fi
 
     set_property service.adb.tcp.port ${DEBUG_NET_PORT:-5555}
+    # los-tv step42: force adbd for network sideload. copy_userdata_files()
+    # copies /data/misc/adb/adb_keys to /adb_keys and enables adb root.
+    set_property recovery.adb.enabled 1
+    set_property sys.recovery.copy_userdata true
 }
 
 function init_recovery_device_link()
@@ -118,11 +122,113 @@ function do_netconsole()
 	modprobe netconsole netconsole="@/,@$(getprop dhcp.eth0.gateway)/"
 }
 
+function init_recovery_eth()
+{
+	# los-tv step41: ignore_first_eth skips the lowest-numbered eth*
+	# interface and selects the next one (for systems with two NICs).
+	[ -n "$IGNORE_FIRST_ETH" ] || return 0
+
+	# USB NICs may enumerate slightly after post-fs; wait briefly.
+	local tries=0 count n
+	while [ "$tries" -lt 5 ]; do
+		count=0
+		n=0
+		while [ "$n" -le 31 ]; do
+			[ -e "/sys/class/net/eth$n" ] && count=$((count + 1))
+			n=$((n + 1))
+		done
+		[ "$count" -ge 2 ] && break
+		sleep 1
+		tries=$((tries + 1))
+	done
+
+	local first=1 iface=
+	n=0
+	while [ "$n" -le 31 ]; do
+		if [ -e "/sys/class/net/eth$n" ]; then
+			if [ "$first" -eq 1 ]; then
+				first=0
+			else
+				iface="eth$n"
+				break
+			fi
+		fi
+		n=$((n + 1))
+	done
+
+	if [ -n "$iface" ]; then
+		set_property vendor.recovery.ethernet.dhcp.iface "$iface"
+		[ -n "$DEBUG" ] && echo "ignore_first_eth: using $iface" >> /dev/x86.prop
+		[ -e /dev/kmsg ] && echo "ignore_first_eth: using $iface" > /dev/kmsg
+	else
+		set_property vendor.recovery.ethernet.dhcp.iface none
+		[ -n "$DEBUG" ] && echo "ignore_first_eth: no second eth interface" >> /dev/x86.prop
+		[ -e /dev/kmsg ] && echo "ignore_first_eth: no second eth interface" > /dev/kmsg
+	fi
+}
+
+function init_recovery_rndis()
+{
+	# los-tv step45: RNDIS (USB-tethering) support for recovery networking.
+	# Use case: no Ethernet on site — update the box via a phone with
+	# USB-tethering enabled (plug the phone in BEFORE rebooting to recovery;
+	# Android phones expose an RNDIS interface in tethering mode).
+	# usbnet and mii are built into this kernel (modules.builtin); only
+	# cdc_ether and rndis_host are modules, shipped inside the recovery
+	# rootfs at /system/lib/modules by the device tree overlay
+	# (device/generic/x86_64_tv/recovery/root/system/lib/modules).
+	# After loading, init brings up usb0 and starts dhcpclient on it via the
+	# vendor.recovery.rndis.iface trigger in init.recovery.x86.rc.
+	local k m loaded=""
+
+	for m in cdc_ether rndis_host; do
+		# insmod from the recovery ramdisk first, then from the real /system
+		# as a fallback (it may be mounted on top of the ramdisk copy).
+		loaded=""
+		for k in /system/lib/modules/$m.ko \
+		         /system/lib/modules/$(uname -r)/kernel/drivers/net/usb/$m.ko; do
+			if [ -f "$k" ]; then
+				if insmod "$k" >/dev/null 2>&1; then
+					loaded="$k"
+					[ -e /dev/kmsg ] && echo "rndis: insmod $k ok" >> /dev/kmsg
+					break
+				fi
+				# insmod may fail if the module is already loaded; keep trying.
+			fi
+		done
+		if [ -z "$loaded" ]; then
+			[ -e /dev/kmsg ] && echo "rndis: failed to load $m" >> /dev/kmsg
+		fi
+	done
+
+	# RNDIS interfaces appear only when a tethering phone is connected.
+	# Root hubs (usbN) don't count; a phone shows up as 1-1, 2-1.1 etc.
+	if ls /sys/bus/usb/devices 2>/dev/null | grep -qE '^[0-9]'; then
+		local n=0
+		while [ "$n" -lt 6 ]; do
+			if [ -e /sys/class/net/usb0 ]; then
+				[ -e /dev/kmsg ] && echo "rndis: found usb0, starting DHCP on it" >> /dev/kmsg
+				set_property vendor.recovery.rndis.iface usb0
+				return 0
+			fi
+			sleep 1
+			n=$((n + 1))
+		done
+		[ -e /dev/kmsg ] && echo "rndis: usb0 not found (phone tethering absent?)" >> /dev/kmsg
+	else
+		[ -e /dev/kmsg ] && echo "rndis: no USB devices connected, skipping" >> /dev/kmsg
+	fi
+
+	return 0
+}
+
 function do_init()
 {
 	init_graphics
+	init_recovery_eth
     init_misc
 	init_recovery_device_link
+	init_recovery_rndis
 }
 
 # import cmdline variables
@@ -132,6 +238,9 @@ for c in `cat /proc/cmdline`; do
 			;;
 		nomodeset)
 			HWACCEL=0
+			;;
+		ignore_first_eth)
+			IGNORE_FIRST_ETH=1
 			;;
 		*=*)
 			eval $c
@@ -150,6 +259,33 @@ case "$1" in
 		;;
 	init|"")
 		do_init
+		# los-tv: драйвер запускается по флагу GRUB или по запросу из
+		# приложения-плитки в Android (.install-request на data-разделе).
+		LOSTV_ADDON_RUN=0
+		if [ "$(getprop ro.boot.los_tv_addon)" = "1" ]; then
+			LOSTV_ADDON_RUN=1
+		else
+			mkdir -p /mnt/cdrom
+			mount -t ext4 /dev/block/by-name/cdrom /mnt/cdrom 2>/dev/null
+			if [ -f /mnt/cdrom/data/media/0/los-tv-proprietary/.install-request ]; then
+				LOSTV_ADDON_RUN=1
+			fi
+		fi
+		if [ "$LOSTV_ADDON_RUN" = "1" ]; then
+			# Пункт GRUB «Установить проприетарные компоненты»: драйвер
+			# извлекает компоненты из образов, ставит их в неактивный слот
+			# и сам перезагружает устройство.
+			# setsid обязателен: фоновый процесс, запущенный из init через
+			# exec, иначе умирает вместе с родительской оболочкой (проверено
+			# 2026-10-31: скрипт не запускался вовсе).
+			echo "los-tv-addon: flag detected, starting driver" > /dev/kmsg
+			# Запускаем в foreground: фоновый процесс из init не выживает
+			# (проверено 2026-10-31: setsid тоже не помог). init при этом
+			# блокируется до конца установки — это нормально, меню recovery
+			# всё равно останавливается, а в конце драйвер делает reboot.
+			/system/bin/sh /system/bin/los-tv-addon-boot.sh
+			echo "los-tv-addon: driver exited rc=$?" > /dev/kmsg
+		fi
 		;;
 esac
 

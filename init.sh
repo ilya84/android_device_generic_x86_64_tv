@@ -593,6 +593,38 @@ function init_hal_media()
 			;;
 	esac
 
+## Kabini/radeon: AVC through c2.ffmpeg + VA-API is the only path that
+## produces a correct picture with gbm_gralloc here, so rank it above the
+## (disabled) software decoders and keep the VA-API deinterlacer off.
+	if [[ "$GPU" == *radeon* ]]; then
+		set_property debug.ffmpeg-codec2.rank 768
+		set_property debug.ffmpeg-codec2.deinterlace none
+	fi
+
+}
+
+## Radeon only: swap in the tuned codec lists.  They have to be bind-mounted
+## because /vendor and the swcodec APEX are read-only, and the APEX is only
+## mounted after post-fs, hence the separate "apexcodecs" entry point.
+function do_media_codec_lists()
+{
+	case "$GPU" in
+		*radeon) ;;
+		*) return ;;
+	esac
+
+	mount --bind /vendor/etc/media_codecs_radeon.xml /vendor/etc/media_codecs.xml
+	mount --bind /vendor/etc/media_codecs_radeon_c2_video.xml /vendor/etc/media_codecs_google_c2_video.xml
+
+	for f in /apex/com.android.media.swcodec/etc/media_codecs.xml /apex/com.android.media.swcodec@*/etc/media_codecs.xml; do
+		[ -e "$f" ] && mount --bind /vendor/etc/media_codecs_radeon_apex.xml "$f"
+	done
+
+	# the codec services cache the lists at start-up
+	stop media.swcodec
+	stop android-hardware-media-c2-hal
+	start media.swcodec
+	start android-hardware-media-c2-hal
 }
 
 function init_hal_vulkan()
@@ -937,7 +969,11 @@ function do_netconsole()
 
 function do_bootcomplete()
 {
-	hciconfig | grep -q hci || pm disable com.android.bluetooth
+	# 2026-11-01: отключать com.android.bluetooth НЕЛЬЗЯ. Если hci0 нет,
+	# пакет отключался, и на следующей загрузке system_server падал на
+	# BluetoothService ("No service can handle intent") → бут-анимация
+	# навсегда. Просто фиксируем факт в kmsg.
+	hciconfig | grep -q hci || echo "init.sh: no HCI adapter (Bluetooth hardware missing)" > /dev/kmsg
 
 	init_cpu_governor
 
@@ -950,7 +986,8 @@ function do_bootcomplete()
 			echo on > /sys/devices/pci0000:00/0000:00:15.1/i2c_designware.1/power/control
 			;;
 		VMware*)
-			pm disable com.android.bluetooth
+			# 2026-11-01: отключение BT ломает следующую загрузку (см. выше).
+			:
 			;;
 		X80*Power)
 			export POWER_NONBOOT_CPU_OFF=${POWER_NONBOOT_CPU_OFF:-1}
@@ -1114,6 +1151,9 @@ case "$1" in
 		;;
 	kmsg)
 		dmesg -w > /data/kmsg.txt
+		;;
+	apexcodecs)
+		do_media_codec_lists
 		;;
 	init|"")
 		do_init

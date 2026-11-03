@@ -1,0 +1,12 @@
+# Включение check-in microG при первой загрузке (apply-step24.py).
+# Один раз: пока нет /data/misc/checkin-enabler.done. Под user root —
+# content требует root (signature-permission WRITE_SETTINGS).
+on property:sys.boot_completed=1
+    start checkin-enabler
+
+service checkin-enabler /system/bin/sh /system/bin/checkin-enabler.sh
+    oneshot
+    disabled
+    user root
+    group root
+    class core

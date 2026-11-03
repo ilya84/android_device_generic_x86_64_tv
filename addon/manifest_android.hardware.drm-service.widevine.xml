@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widevine IDrmFactory, извлечено из vendor-раздела ChromeOS hatch (ARCVM).
+     Регистрирует android.hardware.drm::IDrmFactory/widevine (AIDL, v1). -->
+<manifest version="1.0" type="device">
+    <hal format="aidl">
+        <name>android.hardware.drm</name>
+        <version>1</version>
+        <fqname>IDrmFactory/widevine</fqname>
+    </hal>
+</manifest>

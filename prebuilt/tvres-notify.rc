@@ -1,0 +1,13 @@
+# Android TV: уведомление в шторке, если телевизор не принял физический режим
+# (apply-step33). Сервис обязательно от uid shell: «cmd notification post» из-под
+# root уведомление не создаёт (пакет выводится из uid), а TV-панель показывает
+# только уведомления с TvExtender (флаг -T, apply-step32).
+on property:sys.los_tv.phys_fail=*
+    start tvres-notify
+
+service tvres-notify /system/bin/sh /system/bin/tvres-notify.sh
+    oneshot
+    disabled
+    user shell
+    group shell
+    class core

@@ -44,6 +44,10 @@ on post-fs
     chmod 0664 /dev/ion
     chown system system /dev/ion
 
+# radeon: codec lists live in the swcodec APEX too, swap them in after apexd
+on property:apex.all.ready=true
+    exec u:r:init:s0 -- /system/bin/logwrapper /system/bin/sh /system/etc/init.sh apexcodecs
+
 on post-fs-data
     # Create the directories used by the Wireless subsystem
     mkdir /data/vendor/wifi 0771 wifi wifi
@@ -193,6 +197,12 @@ on property:debug.logcat=1
 on property:sys.shutdown.requested=*
     start vendor.boot-mode-selection
     wait_for_prop vendor.boot-mode-selection.complete true
+
+# los-tv: заголовок основного пункта GRUB («to SideLoad» / «to Recovery»).
+# sys.powerctl содержит полный запрос: reboot,sideload / reboot,recovery.
+# initrd удаляет маркеры при следующей загрузке.
+on shutdown
+    exec - root root -- /vendor/bin/sh /vendor/bin/los-tv-boot-mode.sh
 
 on property:vendor.iptsd.device=*
     restart iptsd

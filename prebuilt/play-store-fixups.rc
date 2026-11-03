@@ -1,0 +1,12 @@
+# Play Store: выдать appop ACTIVATE_VPN при каждой загрузке (apply-step27.py).
+# Без него DownloadService (FGS типа systemExempted) падает, и установка
+# приложений из магазина зависает на «Подождите…» — подробности в скрипте.
+on property:sys.boot_completed=1
+    start play-store-fixups
+
+service play-store-fixups /system/bin/sh /system/bin/play-store-fixups.sh
+    oneshot
+    disabled
+    user root
+    group root
+    class core

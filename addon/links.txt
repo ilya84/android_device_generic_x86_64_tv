@@ -1,0 +1,16 @@
+# los-tv: ссылки и ресурсы для плитки «Проприетарные компоненты» (2026-11-01).
+#
+# Формат строк (разделитель — |):
+#   D|<id>|<заголовок>|<url>|<sha256>|<размер>|<примечание>
+#       файл, который приложение умеет скачивать автоматически;
+#   L|<id>|<заголовок>|<url>|||<примечание>
+#       ссылка для человека (QR-код и LINKS.txt).
+# Строки с # — комментарии. Файл обновляется через OTA, приложение читает его
+# при запуске, поэтому список ссылок можно менять без пересборки приложения.
+
+D|chromeos|ChromeOS hatch (Widevine)|https://dl.google.com/dl/edgedl/chromeos/recovery/chromeos_16805.31.0_hatch_recovery_stable-channel_HatchMPKeys-v14.bin.zip|f53154eef9ae6c0532490ef160fede742006b5227486bd5ca9d84d39fa4926b5|1963987584|ChromeOS recovery image, Widevine L3 (x86_64)
+D|googleapis|google_apis x86_64-36.1 (NDK translation)|https://dl.google.com/android/repository/sys-img/google_apis/x86_64-36.1_r04.zip|d4e62da6f1ef0bf217657e51f42e48638a15355e6f4112762a6ceabfba6cef21|1960532087|Emulator system image, NDK translation (x86_64, abi 36.1)
+
+L|playstore_apkmirror|Play Store (Android TV) — APKMirror|https://www.apkmirror.com/apk/google-inc/google-play-store-android-tv/|||Нужна версия для Android 16 (minAPI 34+), архитектура arm64-v8a или universal
+L|playstore_techspot|Play Store (Android TV) — TechSpot|https://www.techspot.com/downloads/7631-google-play-store-tv.html|||Альтернативное зеркало
+L|youtube_apkmirror|YouTube TV — APKMirror|https://www.apkmirror.com/apk/google-inc/youtube-for-android-tv-android-tv/|||Нужен bundle для arm64-v8a (файл .apkm)

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Play Store на TV (leanback) требует обе фичи, иначе стартует
+  AccessRestrictedActivity «Эта версия приложения несовместима с вашим
+  устройством». См. apply-step23.py.
+-->
+<permissions>
+    <feature name="cn.google.services" />
+    <feature name="com.google.android.feature.services_updater" />
+</permissions>

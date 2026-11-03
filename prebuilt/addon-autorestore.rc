@@ -1,0 +1,5 @@
+# los-tv: восстановление проприетарных компонентов после OTA (2026-11-01).
+# Service-блок здесь не используется: init этой сборки парсит action, но не
+# регистрирует service из этого файла. exec запускает скрипт напрямую.
+on property:sys.boot_completed=1
+    exec - root root -- /system/bin/sh /system/bin/addon-autorestore.sh
