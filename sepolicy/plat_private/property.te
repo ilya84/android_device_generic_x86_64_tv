@@ -1,0 +1,8 @@
+# los-tv: control/status properties for the native audio RTP sender.
+# system_property_type is required: these properties belong to /system and
+# coredomain (system_app/audio_sender) is allowed to set them.
+type audio_rtp_enabled_prop, property_type, system_property_type;
+type audio_rtp_host_prop, property_type, system_property_type;
+type audio_rtp_port_prop, property_type, system_property_type;
+type audio_rtp_state_prop, property_type, system_property_type;
+type audio_rtp_stats_prop, property_type, system_property_type;

@@ -1,0 +1,41 @@
+typeattribute init system_executes_vendor_violators;
+# los-tv (x86 TV): init/bootanim запускают vendor-бинари HAL (gatekeeper, media.c2).
+# coredomain по neverallow не может открывать vendor_file, поэтому графика
+# помечена same_process_hal_file (см. plat_private/file_contexts).
+allow init vendor_file:file { execute execute_no_trans read open getattr map };
+
+# /fstab.<product> создаётся в initrd (tmpfs): его читают vold и bootctl HAL.
+allow vold tmpfs:file r_file_perms;
+allow hal_bootctl_default tmpfs:file r_file_perms;
+
+# Ядро грузит прошивки radeon из /vendor/firmware и модули из /system/lib/modules.
+allow kernel vendor_file:file r_file_perms;
+allow kernel vendor_file:system firmware_load;
+allow kernel system_lib_file:system module_load;
+
+# x86 light HAL reads/writes /sys/class/backlight (thermal-daemon labels it).
+allow hal_light_default sysfs_backlight_thermal:dir r_dir_perms;
+allow hal_light_default sysfs_backlight_thermal:file rw_file_perms;
+
+# init.sh (toybox) reads DMI for board detection.
+allow toolbox vendor_sysfs_dmi_id:dir r_dir_perms;
+allow toolbox vendor_sysfs_dmi_id:file r_file_perms;
+
+# HIDL command buffer uses ashmem-compat memfds; the HAL server tmpfs
+# type needs the same ashmem ioctls that tmpfs_domain() grants.
+allowxperm hal_graphics_composer_default hal_graphics_composer_server_tmpfs:file ioctl ashmem_ioctls;
+allowxperm hal_graphics_composer_default vndbinder_device:chr_file ioctl unpriv_binder_ioctls;
+
+# The AOSP rule grants getattr/map/read/write/relabelfrom but NOT ioctl;
+# allowxperm alone does not grant the base ioctl permission, so the
+# HIDL command buffer (ashmem-compat memfd) failed to initialize.
+allow hal_graphics_composer_default hal_graphics_composer_server_tmpfs:file ioctl;
+
+# drmfb-composer uses a netlink uevent socket for display hotplug.
+allow hal_graphics_composer_default self:netlink_kobject_uevent_socket create_socket_perms_no_ioctl;
+
+# Graphics HALs probe ro.hardware.* / debug.* vendor properties on startup.
+
+# drmfb-composer unbinds the framebuffer console before taking over the CRTC
+# (fbcon bound makes drmModePageFlip return EINVAL on radeon).
+allow hal_graphics_composer_default sysfs:file w_file_perms;

@@ -1,0 +1,32 @@
+// los-tv: утилита вывода сообщений на экран recovery (minui).
+cc_binary {
+    name: "los-tv-msg",
+    srcs: ["los-tv-msg.cpp"],
+    cppflags: [
+        "-Wall",
+        "-Werror",
+    ],
+    static_libs: [
+        "libminui",
+    ],
+    shared_libs: [
+        "libbase",
+        "liblog",
+        "libpng",
+    ],
+    recovery_available: true,
+    recovery: true,
+}
+
+// los-tv: парсер GPT — находит разделы ROOT-A/super по имени, а не по
+// жёстко закреплённым смещениям (устойчивость к смене раскладки образов).
+cc_binary {
+    name: "los-tv-gpt",
+    srcs: ["los-tv-gpt.cpp"],
+    cppflags: [
+        "-Wall",
+        "-Werror",
+    ],
+    recovery_available: true,
+    recovery: true,
+}

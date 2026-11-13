@@ -3,3 +3,6 @@ vendor.recovery.ethernet.dhcp.iface		u:object_r:vendor_recovery_ethernet_dhcp_pr
 
 # Net
 vendor.net.		u:object_r:vendor_net_prop:s0 exact string
+
+# c2-ffmpeg pixel format (radeon RGBX_8888)
+persist.vendor.ffmpeg-codec2.pixel_format	u:object_r:vendor_ffmpeg_prop:s0 exact string

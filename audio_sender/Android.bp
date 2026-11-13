@@ -1,0 +1,33 @@
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
+cc_binary {
+    name: "audio-rtp-sender",
+    srcs: ["audio_sender.cpp"],
+    shared_libs: [
+        "framework-permission-aidl-cpp",
+        "libaudioclient",
+        "libbase",
+        "libbinder",
+        "liblog",
+        "libutils",
+    ],
+    header_libs: [
+        "libmedia_headers",
+        "libmediametrics_headers",
+    ],
+    cpp_std: "c++20",
+    cflags: [
+        "-Wall",
+        "-Werror",
+        "-Wno-unused-parameter",
+    ],
+}
+
+prebuilt_etc {
+    name: "audio-rtp-sender-rc",
+    src: "audio_sender.rc",
+    filename: "audio_sender.rc",
+    sub_dir: "init",
+}

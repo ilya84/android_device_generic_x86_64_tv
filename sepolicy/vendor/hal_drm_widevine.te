@@ -1,0 +1,12 @@
+# los-tv: Widevine AIDL HAL (запускается в hal_drm_clearkey_aidl) читает
+# libwvaidl/libprotobuf из /vendor/lib64 (метка vendor_file).
+allow hal_drm_clearkey_aidl vendor_file:file r_file_perms;
+allow hal_drm_clearkey_aidl vendor_file:dir r_dir_perms;
+
+# Widevine L3 stores its device certificate / provisioning data here:
+# /data/vendor/mediadrm/IDM<uid>/L3/*.dat (vendor_data_file).
+allow hal_drm_clearkey_aidl vendor_data_file:file rw_file_perms;
+allow hal_drm_clearkey_aidl vendor_data_file:dir rw_dir_perms;
+
+# Widevine decrypts into app-owned memfds.
+allow hal_drm_clearkey_aidl appdomain_tmpfs:file rw_file_perms;

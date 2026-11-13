@@ -1,0 +1,5 @@
+persist.sys.audio_rtp.enabled u:object_r:audio_rtp_enabled_prop:s0 exact string
+persist.sys.audio_rtp.host    u:object_r:audio_rtp_host_prop:s0    exact string
+persist.sys.audio_rtp.port    u:object_r:audio_rtp_port_prop:s0    exact string
+sys.audio_rtp.state           u:object_r:audio_rtp_state_prop:s0   exact string
+sys.audio_rtp.stats           u:object_r:audio_rtp_stats_prop:s0   exact string

@@ -27,15 +27,22 @@ if [ ! -w "$CFG_PATH" ]; then
 fi
 
 # Determine boot mode from first argument
-REASON=$(echo -n "$1" | cut -c 2-)
+REASON="$1"
 case "$REASON" in
-    recovery|recovery-update)
+    *recovery*)
         new_mode="recovery"
         ;;
     *)
         new_mode="normal"
         ;;
 esac
+# los-tv: GRUB header suffix marker (removed by initrd on next boot)
+GRUBDIR=$(dirname "$CFG_PATH")
+case "$new_mode" in
+    recovery) touch "$GRUBDIR/mode-recovery" ;;
+    *) rm -f "$GRUBDIR/mode-recovery" ;;
+esac
+
 
 # First pass: Try to modify androidboot.mode
 found_android=0

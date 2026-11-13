@@ -1,0 +1,6 @@
+# los-tv: vold читает /fstab.<product> (system-as-root, метка rootfs).
+allow vold rootfs:file r_file_perms;
+allow { vold toolbox kcmdlinectrl } tmpfs:file r_file_perms;
+
+# misctrl reads /fstab.<product> from the initrd (tmpfs) to set up misc.
+allow misctrl tmpfs:file r_file_perms;

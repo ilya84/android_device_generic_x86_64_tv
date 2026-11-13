@@ -1,5 +1,6 @@
 #for minigbm_gbm_mesa
 sched_getaffinity: 1
+sched_setaffinity: 1
 
 #for hbm
 mkdirat: 1

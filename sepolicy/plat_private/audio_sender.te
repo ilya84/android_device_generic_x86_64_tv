@@ -1,0 +1,51 @@
+# los-tv: native playback capture (REMOTE_SUBMIX) -> RTP L16 -> audiohub.
+type audio_sender, domain, coredomain;
+type audio_sender_exec, exec_type, system_file_type, file_type;
+init_daemon_domain(audio_sender)
+
+# Talk to audioserver (audio flinger + audio policy) and the legacy
+# AudioManager service used for the permission barrier.
+binder_use(audio_sender)
+binder_call(audio_sender, audioserver)
+binder_call(audio_sender, system_server)   # IAudioManager (AudioService) + reply binder transfer
+binder_call(audioserver, audio_sender)     # AudioFlinger callbacks into the record client
+allow audio_sender audio_service:service_manager find;
+allow audio_sender audioserver_service:service_manager find;
+
+# MediaMetrics: libmedia tries to bind media.metrics on every new audio
+# process.  Allow it explicitly instead of eating the 5 s service timeout.
+allow audio_sender mediametrics_service:service_manager find;
+binder_call(audio_sender, mediametrics)
+
+# AudioRecord/audioflinger share cblk + PCM buffers as audioserver_tmpfs
+# memfds; the client mmaps them read/write.
+allow audio_sender audioserver_tmpfs:file { getattr map read write };
+
+# UDP RTP output.
+net_domain(audio_sender)
+allow audio_sender self:udp_socket create_socket_perms;
+allow audio_sender node:udp_socket sendto;
+allow audio_sender port_type:udp_socket name_bind;
+
+# Logcat diagnostics.
+write_logd(audio_sender)
+
+# Control/status properties: TvSettings (system_app) writes the user switch;
+# the daemon publishes its state and rolling stats for the UI.
+# set_prop/get_prop also grant the property socket and the required
+# property-file read/map permissions.
+set_prop(system_app, audio_rtp_enabled_prop)
+set_prop(system_app, audio_rtp_host_prop)
+set_prop(system_app, audio_rtp_port_prop)
+set_prop(audio_sender, audio_rtp_state_prop)
+set_prop(audio_sender, audio_rtp_stats_prop)
+get_prop(audio_sender, audio_rtp_enabled_prop)
+get_prop(audio_sender, audio_rtp_host_prop)
+get_prop(audio_sender, audio_rtp_port_prop)
+get_prop(system_app, audio_rtp_state_prop)
+get_prop(system_app, audio_rtp_stats_prop)
+get_prop(shell, audio_rtp_enabled_prop)
+get_prop(shell, audio_rtp_host_prop)
+get_prop(shell, audio_rtp_port_prop)
+get_prop(shell, audio_rtp_state_prop)
+get_prop(shell, audio_rtp_stats_prop)

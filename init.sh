@@ -418,6 +418,7 @@ function init_hal_gralloc()
 		    if { [[ "$BOARD" != *VirtualBox* ]] && 
 				 [ "$HWACCEL" != "0" ]; } || 
 				 [ "$HWACCEL" == "1" ]; then
+				echo "los-tv-init: gpu=$GPU GRALLOC=$GRALLOC HWC=$HWC"
 				${HWC:+set_property ro.hardware.hwcomposer $HWC}
 				set_property ro.hardware.gralloc ${GRALLOC:-gbm}
 				set_drm_mode
@@ -513,15 +514,30 @@ function init_egl()
 
 function init_hal_hwcomposer()
 {
-	if [ "$HWACCEL" == "0" ] || 
-	[[ "$GPU" == *radeon* ]]; then
+	# radeon (pre-GCN/legacy KMS) cannot use drm_hwcomposer (@2.4, atomic),
+	# and the fbdev clone (HWC2OnFbAdapter) copies every frame into /dev/fb0
+	# on the CPU (~200 ms/frame).  Use drmfb-composer instead: legacy KMS
+	# page flip + real DRM vsync.  Gate on radeon so Intel/others keep the
+	# previous behaviour.
+	if [[ "$GPU" == *radeon* ]]; then
+		export HWC_HIDL=${HWC_HIDL:-drmfb}
+	elif [ "$HWACCEL" == "0" ]; then
 		export HWC_HIDL=${HWC_HIDL:-default-2.1}
 	fi
 
+	echo "los-tv-init: HWC_HIDL=$HWC_HIDL"
 	case "$HWC_HIDL" in
 		drmfb)
+			# fbcon is unbound by the drmfb service itself before its
+			# first page flip (init is not allowed to write sysfs).
 			set_property debug.sf.hwc_service_name drmfb
 			start vendor.hwcomposer-2-1.drmfb
+			sleep 1
+			if [ "$(getprop init.svc.vendor.hwcomposer-2-1.drmfb)" != "running" ]; then
+				echo "los-tv-init: drmfb unavailable, falling back to fbdev clone"
+				set_property debug.sf.hwc_service_name default_clone
+				start vendor.hwcomposer-2-1-clone
+			fi
 			;;
 		default-2.1)
 			set_property debug.sf.hwc_service_name default_clone
@@ -579,20 +595,55 @@ function init_hal_media()
 ## c2.ffmpeg can be able to switch now
 	case "$GPU" in
 		*virtio_gpu|*virtio-pci|*nouveau|*radeon)
-			set_property persist.ffmpeg-codec2.pixel_format RGBX_8888
+			set_property persist.vendor.ffmpeg-codec2.pixel_format RGBX_8888
 			;;
 		*i915|*xe|*amdgpu)
 			if [ "$(getprop ro.hardware.gralloc)" != "minigbm" ]; then
-				set_property persist.ffmpeg-codec2.pixel_format RGBX_8888
+				set_property persist.vendor.ffmpeg-codec2.pixel_format RGBX_8888
 			else
-				set_property persist.ffmpeg-codec2.pixel_format YUV_420
+				set_property persist.vendor.ffmpeg-codec2.pixel_format YUV_420
 			fi
 			;;
 		*)
-			set_property persist.ffmpeg-codec2.pixel_format RGB_565
+			set_property persist.vendor.ffmpeg-codec2.pixel_format RGB_565
 			;;
 	esac
 
+## Kabini/radeon: AVC through c2.ffmpeg + VA-API is the only path that
+## produces a correct picture with gbm_gralloc here, so rank it above the
+## (disabled) software decoders and keep the VA-API deinterlacer off.
+	if [[ "$GPU" == *radeon* ]]; then
+		set_property debug.ffmpeg-codec2.rank 768
+		set_property debug.ffmpeg-codec2.deinterlace none
+	fi
+
+	# los-tv: mediaserver registers media.player and media.resource_manager.
+	# Without it ExoPlayer/Jellyfin blocks waiting for resource management.
+	start media
+}
+
+## Radeon only: swap in the tuned codec lists.  They have to be bind-mounted
+## because /vendor and the swcodec APEX are read-only, and the APEX is only
+## mounted after post-fs, hence the separate "apexcodecs" entry point.
+function do_media_codec_lists()
+{
+	case "$GPU" in
+		*radeon) ;;
+		*) return ;;
+	esac
+
+	mount --bind /vendor/etc/media_codecs_radeon.xml /vendor/etc/media_codecs.xml
+	mount --bind /vendor/etc/media_codecs_radeon_c2_video.xml /vendor/etc/media_codecs_google_c2_video.xml
+
+	for f in /apex/com.android.media.swcodec/etc/media_codecs.xml /apex/com.android.media.swcodec@*/etc/media_codecs.xml; do
+		[ -e "$f" ] && mount --bind /vendor/etc/media_codecs_radeon_apex.xml "$f"
+	done
+
+	# Codec services cache the lists at start-up.  The apexcodecs entry
+	# point starts media.swcodec after this function returns, on every GPU.
+	stop media.swcodec
+	stop android-hardware-media-c2-hal
+	start android-hardware-media-c2-hal
 }
 
 function init_hal_vulkan()
@@ -924,6 +975,7 @@ function do_init()
 	init_hal_lights
 	init_hal_power
 	init_hal_sensors
+	echo "los-tv-init: do_init done"
 	init_tscal
 	init_ril
 	init_prepare_ota
@@ -937,7 +989,13 @@ function do_netconsole()
 
 function do_bootcomplete()
 {
-	hciconfig | grep -q hci || pm disable com.android.bluetooth
+	# 2026-11-01: отключать com.android.bluetooth НЕЛЬЗЯ. Если HCI-адаптера нет,
+	# пакет отключался, и на следующей загрузке system_server падал на
+	# BluetoothService ("No service can handle intent") → бут-анимация
+	# навсегда. Просто фиксируем факт в kmsg.
+	# 2026-11-05: hciconfig в toybox отсутствует, поэтому проверяем sysfs.
+	ls /sys/class/bluetooth/hci* >/dev/null 2>&1 || \
+		echo "init.sh: no HCI adapter (Bluetooth hardware missing)" > /dev/kmsg
 
 	init_cpu_governor
 
@@ -950,7 +1008,8 @@ function do_bootcomplete()
 			echo on > /sys/devices/pci0000:00/0000:00:15.1/i2c_designware.1/power/control
 			;;
 		VMware*)
-			pm disable com.android.bluetooth
+			# 2026-11-01: отключение BT ломает следующую загрузку (см. выше).
+			:
 			;;
 		X80*Power)
 			export POWER_NONBOOT_CPU_OFF=${POWER_NONBOOT_CPU_OFF:-1}
@@ -965,6 +1024,19 @@ function do_bootcomplete()
 
 	# initialize audio in bootcomplete
 	init_hal_audio_bootcomplete
+
+	# los-tv: media services race with servicemanager at boot.  mediaserver
+	# registers media.player/media.resource_manager (ExoPlayer blocks without
+	# them), mediaextractor is needed by framework MediaPlayer (e.g. the
+	# Kinopoisk splash screen), and the c2-ffmpeg service must re-register
+	# after servicemanager is up.
+	start media
+	# Restart, not stop: at this point the boot-time instance may have raced
+	# servicemanager, and without media.extractor MediaPlayer.create() fails.
+	stop mediaextractor
+	start mediaextractor
+	stop android-hardware-media-c2-hal
+	start android-hardware-media-c2-hal
 
 	# Turn off TSCalibration if property isn't set
 	if [ "$(getprop ro.tscal.enable)" == "true" ]; then
@@ -1114,6 +1186,12 @@ case "$1" in
 		;;
 	kmsg)
 		dmesg -w > /data/kmsg.txt
+		;;
+	apexcodecs)
+		do_media_codec_lists
+		# APEX services may be registered after class_start main.  Make sure
+		# media.swcodec runs on every GPU, not only after the Radeon fixup.
+		start media.swcodec
 		;;
 	init|"")
 		do_init

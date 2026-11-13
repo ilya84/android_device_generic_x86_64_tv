@@ -208,4 +208,7 @@
     <bool name="config_supportsSplitScreenMultiWindow">true</bool>
     
 
+    <!-- los-tv: TV has no dock; activate the screensaver when the device sleeps
+         (i.e. after SCREEN_OFF_TIMEOUT) and is charging. -->
+    <bool name="config_dreamsActivatedOnSleepByDefault">true</bool>
 </resources>

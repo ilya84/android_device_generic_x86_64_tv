@@ -1,0 +1,241 @@
+// Предустановленные сторонние приложения для ТВ-бокса Mi TV Stick.
+// Добавлены 2026-10-11.
+//
+// Подписи НЕ перевыпускаются (presigned): сохраняются оригинальные.
+// Это нужно, чтобы F-Droid мог обновлять сам себя, а проверки подписи
+// приложений (в т.ч. будущий microG signature spoofing) видели
+// настоящий издательский сертификат.
+//
+// preprocessed: обязателен вместе с presigned для APK с targetSdkVersion >= 30
+// (у нас 37 / 35 / 36). Это требование самого soong: APK уже в
+// «предобработанном» формате Android 11+, перерабатывать ресурсы не нужно.
+
+
+package {
+    default_applicable_licenses: ["x86_64_tv_prebuilt_license"],
+}
+
+license {
+    name: "x86_64_tv_prebuilt_license",
+    visibility: [":__subpackages__"],
+    license_kinds: [
+        "SPDX-license-identifier-GPL-3.0-or-later",
+        "legacy_notice",
+    ],
+}
+
+// Магазин приложений (FOSS), замена Google Play.
+android_app_import {
+    name: "FDroid",
+    apk: "F-Droid.apk",
+    presigned: true,
+    preprocessed: true,
+}
+
+// YouTube TV, Wink и Кинопоиск — НЕ системные приложения, а предустановка
+// в /data (2026-10-13; сплиты добавлены 2026-10-28).
+//
+// APK берутся с рабочего устройства (Play Store) в виде base + split_config.*,
+// чтобы ISO нёс те же версии, что уже проверены на железе.
+// NewPipe из сборки удалён 2026-10-28 (мобильный UI, не работает на TV);
+// на уже установленных устройствах он остаётся.
+
+
+// YouTube — НЕ системное приложение, а предустановка в /data (2026-10-13).
+// Причина: в оригинальном APK все 148 .so СЖАТЫ. Системному приложению
+// они должны лежать в архиве несжатыми (extractNativeLibs по умолчанию
+// false для targetSdk>=23), иначе UnsatisfiedLinkError.
+// Обычному приложению PackageManager распаковывает .so сам — сжатые не мешают.
+//
+// Поэтому YouTube ставится скриптом при первом старте в /data/app:
+//   - сохраняется ПОДПИСЬ GOOGLE  -> автообновление из Play Store работает
+//   - .so распаковываются          -> приложение запускается
+// Цена: APK лежит вне /system/app (в /system/product/etc/preinstall/),
+// иначе PackageManager подхватил бы его как системное снова.
+
+
+// YouTube TV, Wink и Кинопоиск из базового образа убраны (2026-10-29):
+// YouTube TV требует NDK translation (arm64-only), а Wink/Кинопоиск —
+// Widevine. Всё это ставится из Play Store после add-on с проприетарными
+// компонентами. В базе остаются только открытые приложения.
+
+
+// microG GmsCore — реализация Google Play Services (Apache 2.0).
+// Ставится ВМЕСТЕ с настоящим Play Store: пакеты разные
+// (com.google.android.gms против com.android.vending), конфликта нет.
+// microG Companion (app.id.gplay.microg) не ставим — индекс microG
+// недоступен, GmsCore работает и без него.
+// Собственный microG vending НЕ ставится — занят Play Store.
+// targetSdk 29 → preprocessed не требуется.
+android_app_import {
+    name: "MicroGGmsCore",
+    apk: "microG-GmsCore.apk",
+    presigned: true,
+}
+
+
+
+
+
+// --- Предустановка в /data: APK как ОБЫЧНЫЕ приложения (2026-10-13) ---
+//
+// Почему не системные (/system/app):
+//   1) PackageManager НЕ распаковывает .so системных приложений. В YouTube
+//      все 148 .so сжаты -> UnsatisfiedLinkError: "libelements.so" not found.
+//      Обычному приложению распаковка делается автоматически.
+//   2) Системное приложение нельзя нормально удалить (мусор в /data).
+//   3) Системное приложение не обновляется из внешнего источника.
+//
+// Куда: /system/etc/preinstall — этот каталог НЕ сканируется PackageManager
+// (тот смотрит только .../app и .../priv-app), поэтому APK не станут
+// системными повторно и вся идея сохранится.
+//
+// ⚠️ Не PRODUCT_COPY_FILES: AOSP запрещает .apk там
+//    (build/make/core/Makefile:105 «use BUILD_PREBUILT instead»).
+// ⚠️ Нужен filename: без него файл называется как модуль (preinstall-YouTube),
+//    а скрипт ждёт <Имя>.apk.
+// ⚠️ В этом дереве у prebuilt_etc/prebuilt_bin НЕТ проверок bootability и
+//    сжатия, поэтому оригинальный подписанный Google APK проходит как есть.
+
+// APK -> /system/etc/preinstall/
+prebuilt_etc {
+    name: "preinstall-JellyfinTV",
+    src: "user/JellyfinTV.apk",
+    filename: "JellyfinTV.apk",
+    sub_dir: "preinstall",
+}
+
+prebuilt_etc {
+    name: "preinstall-VLC",
+    src: "user/VLC-x86_64.apk",
+    filename: "VLC-x86_64.apk",
+    sub_dir: "preinstall",
+}
+
+
+
+
+
+
+// Скрипт -> /system/bin/  (именно prebuilt_bin: у prebuilt_etc base=etc,
+// и sub_dir "bin" дал бы /system/etc/bin/, а .rc ссылается на /system/bin/)
+prebuilt_bin {
+    name: "preinstall-apps.sh",
+    src: "user/preinstall-apps.sh",
+}
+
+// init .rc -> /system/etc/init/
+// ⚠️ filename обязателен: без него prebuilt_etc ставит файл под именем
+// модуля (preinstall-apps-rc), init не видит .rc и НЕ регистрирует
+// on-property из файла — preinstall молча не запускается после перепрошивки.
+prebuilt_etc {
+    name: "preinstall-apps-rc",
+    src: "preinstall-apps.rc",
+    filename: "preinstall-apps.rc",
+    sub_dir: "init",
+}
+
+
+// Одноразовое включение check-in microG (дефолт в microG — false →
+// android-id=0 → Play Store не синкается). См. apply-step24.py.
+prebuilt_bin {
+    name: "checkin-enabler.sh",
+    src: "checkin-enabler.sh",
+}
+
+prebuilt_etc {
+    name: "checkin-enabler-rc",
+    src: "checkin-enabler.rc",
+    filename: "checkin-enabler.rc",
+    sub_dir: "init",
+}
+
+// Фикс установки из Play Store: appop ACTIVATE_VPN на каждой загрузке.
+// Без него падает DownloadService (FGS типа systemExempted). См. apply-step27.py.
+prebuilt_bin {
+    name: "play-store-fixups.sh",
+    src: "play-store-fixups.sh",
+}
+
+prebuilt_etc {
+    name: "play-store-fixups-rc",
+    src: "play-store-fixups.rc",
+    filename: "play-store-fixups.rc",
+    sub_dir: "init",
+}
+
+// Стандартный ТВ-режим кадра (1920x1080 @ 320 dpi) при каждой загрузке.
+// Без него Google-приложения выбирают упрощённую вёрстку боковых панелей.
+// См. apply-step28.py.
+prebuilt_bin {
+    name: "display-fixups.sh",
+    src: "display-fixups.sh",
+}
+
+prebuilt_etc {
+    name: "display-fixups-rc",
+    src: "display-fixups.rc",
+    filename: "display-fixups.rc",
+    sub_dir: "init",
+}
+
+// Уведомление в шторке ТВ, если телевизор не принял физический режим.
+// Обязательно от uid shell («cmd notification post» из-под root уведомление
+// не создаёт, а без флага -T его не рисует TV-панель). См. apply-step33.py.
+prebuilt_bin {
+    name: "tvres-notify.sh",
+    src: "tvres-notify.sh",
+}
+
+prebuilt_etc {
+    name: "tvres-notify-rc",
+    src: "tvres-notify.rc",
+    filename: "tvres-notify.rc",
+    sub_dir: "init",
+}
+
+// allowlist привилегий для Play Store (priv-app).
+// PackageManager читает все *.xml из /system/etc/permissions/.
+// Отдельным prebuilt_etc, потому что android_app_import не умеет
+// privapp_allowlist (в отличие от android_app).
+prebuilt_etc {
+    name: "PlayStore-privapp-permissions",
+    src: "privapp-permissions-com.android.vending.xml",
+    filename: "privapp-permissions-com.android.vending.xml",
+    sub_dir: "permissions",
+}
+
+// los-tv: восстановление проприетарных компонентов после OTA.
+prebuilt_bin {
+    name: "addon-autorestore.sh",
+    src: "addon-autorestore.sh",
+}
+
+prebuilt_etc {
+    name: "addon-autorestore-rc",
+    src: "addon-autorestore.rc",
+    filename: "addon-autorestore.rc",
+    sub_dir: "init",
+    // Файл содержит только on-property + exec (service-блок в этой сборке
+    // init не регистрирует). Расширение .rc оставлено для наглядности.
+}
+
+// los-tv: состояние плитки «Проприетарные компоненты» и уведомление.
+prebuilt_bin {
+    name: "los-tv-addon-check.sh",
+    src: "los-tv-addon-check.sh",
+}
+
+prebuilt_bin {
+    name: "los-tv-addon-notify.sh",
+    src: "los-tv-addon-notify.sh",
+}
+
+prebuilt_etc {
+    name: "los-tv-addon-state-rc",
+    src: "los-tv-addon-state.rc",
+    filename: "los-tv-addon-state.rc",
+    sub_dir: "init",
+}
+
+

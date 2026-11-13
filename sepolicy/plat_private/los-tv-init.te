@@ -1,0 +1,77 @@
+# los-tv: init runs system binaries/scripts without a domain transition
+# (logwrapper, init.sh, HAL services with system_file binaries).
+allow init system_file:file { execute execute_no_trans };
+allow init shell_exec:file { execute execute_no_trans read open getattr map };
+allow init toolbox_exec:file { execute execute_no_trans read open getattr map };
+allow init exported_default_prop:property_service set;
+allow init system_bootstrap_lib_file:dir r_dir_perms;
+allow init system_bootstrap_lib_file:file r_file_perms;
+# init.sh uses the `start`/`stop` toybox applets, which run in the toolbox domain.
+allow toolbox property_socket:sock_file write;
+allow toolbox ctl_default_prop:property_service set;
+allow toolbox ctl_start_prop:property_service set;
+allow toolbox ctl_stop_prop:property_service set;
+allow toolbox system_bootstrap_lib_file:dir r_dir_perms;
+allow toolbox system_bootstrap_lib_file:file r_file_perms;
+# In case ctl props are set directly from the init domain.
+allow init ctl_default_prop:property_service set;
+allow init ctl_start_prop:property_service set;
+allow init ctl_stop_prop:property_service set;
+
+# Kernel module autoload (r8169 PHY, snd-hda-codec): request_module was denied,
+# so the NIC never appeared and adb over TCP was unreachable.
+allow kernel self:system module_request;
+
+# Allow init to drop a boot snapshot into the diagnostic directory.
+allow init los_tv_kmsg_data_file:dir { search write add_name };
+allow init los_tv_kmsg_data_file:file create_file_perms;
+
+# request_module() runs /system/bin/modprobe in the kernel domain:
+# sys_module capability, bootstrap/system libs, and system_lib_file module_load.
+allow kernel self:capability sys_module;
+allow kernel system_bootstrap_lib_file:dir r_dir_perms;
+allow kernel system_bootstrap_lib_file:file r_file_perms;
+allow kernel system_bootstrap_lib_file:file execute;
+allow kernel system_lib_file:file r_file_perms;
+allow kernel system_lib_file:file execute;
+allow kernel proc_modules:file r_file_perms;
+
+# Bootstrap binaries need execute on bootstrap lib segments.
+allow init system_bootstrap_lib_file:file execute;
+allow toolbox system_bootstrap_lib_file:file execute;
+
+# setprop/getprop/start run as toybox (toolbox); property service is init.
+allow toolbox init:unix_stream_socket connectto;
+
+# init.sh sets debug.sf.hwc_service_name (debug_prop), gralloc.gbm.device
+# and other vendor props; the neverallow exempts init.
+allow init debug_prop:property_service set;
+allow init vendor_default_prop:property_service set;
+
+# Usermode helper (modprobe) executes system binaries in the kernel domain.
+allow kernel system_file:file execute_no_trans;
+allow kernel system_file:dir r_dir_perms;
+
+# /system/bin/modprobe is a symlink to toybox (toolbox_exec), so the
+# kernel usermode helper needs execute_no_trans on toolbox_exec.
+allow kernel toolbox_exec:file { execute execute_no_trans r_file_perms };
+
+# installd restores top-level app data dirs (system_data_file -> app data).
+allow installd system_data_file:dir { relabelto relabelfrom };
+
+# init.fstab.sh (x86 image boot) creates /dev/block/by-name nodes and
+# symlinks with mknod/ln/mv from the init domain.
+
+# init.fstab.sh creates /dev/block/by-name nodes/symlinks from init.
+# Renaming blk_file is neverallowed, so the script creates misc-device directly.
+allow init block_device:dir { search write add_name };
+allow init block_device:blk_file { create getattr setattr };
+allow init block_device:lnk_file { create getattr read };
+
+# mknod of misc-device resolves to misc_block_device via type_transition.
+allow init misc_block_device:blk_file { create getattr setattr };
+
+# los-tv: init.sh apexcodecs bind-mounts the radeon codec lists over
+# /vendor/etc and over the media.swcodec apex list.
+allow init vendor_configs_file:file { ioctl mounton };
+allow init system_file:file mounton;

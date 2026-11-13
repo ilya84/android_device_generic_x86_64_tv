@@ -1,0 +1,27 @@
+# los-tv: диагностический логгер /dev/kmsg -> /data/local/tmp/los-tv-kmsg.log
+type los_tv_kmsglog, domain, coredomain;
+type los_tv_kmsglog_exec, exec_type, system_file_type, file_type;
+init_daemon_domain(los_tv_kmsglog)
+
+type los_tv_kmsg_data_file, file_type, core_data_file_type;
+
+allow los_tv_kmsglog kmsg_device:chr_file r_file_perms;
+
+# чтение /dev/kmsg требует CAP_SYSLOG; root нужен DAC override для режима 0400
+allow los_tv_kmsglog self:capability2 syslog;
+allow los_tv_kmsglog kernel:system syslog_read;
+
+
+allow los_tv_kmsglog los_tv_kmsg_data_file:dir { search write add_name };
+type_transition los_tv_kmsglog system_data_file:file los_tv_kmsg_data_file "kmsg.log";
+allow los_tv_kmsglog los_tv_kmsg_data_file:file create_file_perms;
+
+# чтение логов (logcat) через сокеты logd
+allow los_tv_kmsglog logdr_socket:sock_file write;
+allow los_tv_kmsglog logdw_socket:sock_file write;
+allow los_tv_kmsglog logd_socket:sock_file write;
+
+# logcat — отдельный exec-тип; нужен entrypoint для запуска из нашего домена
+allow los_tv_kmsglog logcat_exec:file { entrypoint execute read open getattr map };
+
+allow los_tv_kmsglog logd:unix_stream_socket connectto;

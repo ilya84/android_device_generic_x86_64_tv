@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Проприетарные компоненты</string>
+
+    <string name="intro">Этот мастер ставит компоненты, которых нет в базовой системе:\n• Widevine L3 — DRM для видео в онлайн-кинотеатрах;\n• Google NDK translation — запуск arm64-приложений;\n• Android TV Play Store.\n\nЧто произойдёт:\n1. По нажатию на кнопку «Скачать образы» приложение скачает два образа (~1,9 ГБ каждый): ChromeOS hatch (Widevine) и google_apis (NDK translation).\n2. Опционально можно закачать и положить файлы приложений Google Play Store for TV и/или YouTube for TV по ссылкам ниже в папку /sdcard/los-tv-proprietary/ (доступна по adb и USB).\n3. По нажатию кнопки «Установить компоненты» телевизор перезагрузится в recovery, компоненты встанут в резервный слот и затем система загрузится уже с ними. Процесс первичной установки занимает 20–30 минут и требует непрерывного выполнения без перезагрузок.\n\nПозже, если будут устанавливаться обновления системы (OTA), компоненты будут восстанавливаться из архива /mnt/cdrom/los-tv-proprietary.tar.gz, который создастся при первой установке. Восстановление компонентов будет занимать 1–3 минуты и будет требовать повторной загрузки recovery после установки обновления. Весь процесс будет проходить автоматически, не надо будет ничего выбирать и загружать вручную. Если удалить созданный архив — то обновление системы сделает нерабочими приложения YouTube и Play Store, и для того, чтобы вернуть их работоспособность, придётся повторять процедуру установки компонентов с самого начала. Объёмные архивы с образами-источниками после первой установки можно свободно удалять.\n\nЭто приложение можно убрать кнопкой ниже. Если потребуется его вернуть — надо запустить установку компонентов в меню загрузчика: Recovery → «Установить проприетарные компоненты». Установщик завершится с ошибкой (не найдёт файлы), но вернёт это приложение в основное меню, и можно будет автоматически закачать образы. Аналогичное действие можно проделать для установки Play Store или YouTube: надо только положить их APK в /sdcard/los-tv-proprietary и запустить установщик через тот же пункт меню загрузчика.</string>
+
+    <string name="download">Скачать образы</string>
+    <string name="install">Установить компоненты</string>
+    <string name="add_apps">Добавить приложения (Play Store / YouTube TV)</string>
+    <string name="add_apps_short">Добавить приложения</string>
+    <string name="save_links">Сохранить ссылки в LINKS.txt</string>
+    <string name="hide_tile">Убрать плитку с главного экрана</string>
+
+    <string name="state_installed">Компоненты уже установлены.</string>
+    <string name="state_not_installed">Компоненты не установлены.</string>
+    <string name="state_payload">Найден архив компонентов: повторное скачивание образов не нужно.</string>
+    <string name="state_files">Образы: %1$d из %2$d.</string>
+    <string name="state_no_storage">Нет полного доступа к /sdcard: служба ещё не выдала разрешение (перезагрузите устройство).</string>
+
+    <string name="download_starting">Подготовка загрузки…</string>
+    <string name="download_present">%1$s: уже скачано.</string>
+    <string name="download_begin">%1$s: %2$s из %3$s</string>
+    <string name="download_progress">%1$s: %2$s из %3$s (%4$s)</string>
+    <string name="download_verify">%1$s: проверяю sha256…</string>
+    <string name="download_ok">%1$s: готово.</string>
+    <string name="download_done">Загрузка завершена.</string>
+    <string name="download_cancelled">Загрузка отменена.</string>
+    <string name="download_error">Ошибка загрузки: %1$s</string>
+    <string name="download_background">Загрузка идёт в фоне — можно свернуть приложение.</string>
+    <string name="download_notify_channel">Загрузка образов</string>
+    <string name="download_notify_title">Загрузка образов компонентов</string>
+    <string name="download_notify_done_title">Образы скачаны</string>
+    <string name="download_notify_done_text">Откройте плитку «Проприетарные компоненты» и нажмите «Установить компоненты».</string>
+
+    <string name="install_need_files">Сначала скачайте образы (или положите их в /sdcard/los-tv-proprietary).</string>
+    <string name="install_need_apks">Компоненты уже установлены. Положите APK Play Store или YouTube TV в /sdcard/los-tv-proprietary.</string>
+    <string name="install_error">Не удалось создать запрос установки: %1$s</string>
+    <string name="install_rebooting">Перезагружаюсь в recovery…</string>
+
+    <string name="links_saved">Ссылки сохранены: %1$s</string>
+    <string name="links_save_error">Не удалось сохранить LINKS.txt: %1$s</string>
+
+    <string name="tile_hidden">Плитка убрана. Она вернётся, если recovery снова не найдёт файлы.</string>
+    <string name="tile_hide_error">Не удалось убрать плитку: %1$s</string>
+
+    <string name="links_header">Ссылки для скачивания APK</string>
+    <string name="images_header">Образы (можно скачать вручную)</string>
+    <string name="images_hint">Эти файлы приложение скачивает само по кнопке «Скачать образы». Вручную их тоже можно забрать по ссылкам выше и положить в /sdcard/los-tv-proprietary/. Обязательные требования: NDK translation для x86_64 (google_apis 36.1) и Widevine L3 для x86_64 (ChromeOS hatch).</string>
+
+    <string name="links_file_header">los-tv: ссылки для проприетарных компонентов</string>
+    <string name="links_file_footer">Правила выбора:\n— Play Store: версия для Android 16 (minAPI 34+), архитектура arm64-v8a или universal (arm64-v8a + x86_64).\n— YouTube TV: bundle для arm64-v8a (файл .apkm).\n— APK/APKM положите в /sdcard/los-tv-proprietary.\n— Два образа (ChromeOS и google_apis) приложение скачивает само; вручную их тоже можно положить в ту же папку.\n— Обязательные требования к образам: NDK translation для x86_64 (google_apis 36.1) и Widevine L3 для x86_64 (ChromeOS hatch).</string>
+</resources>

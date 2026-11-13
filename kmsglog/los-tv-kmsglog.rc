@@ -1,0 +1,42 @@
+# los-tv: диагностика — persistent kmsg + logcat (переживают watchdog reset).
+service los-tv-kmsglog /system/bin/los-tv-kmsglog
+    class core
+    user root
+    group root
+    seclabel u:r:los_tv_kmsglog:s0
+
+# los-tv: disabled (the -f logger grew to hundreds of MB across restarts)
+#service los-tv-logcat /system/bin/logcat -b all -v threadtime -f /data/misc/los_tv_kmsg/logcat.log -r 4096 -n 2
+#    class core
+#    user root
+#    group root log
+#    seclabel u:r:los_tv_kmsglog:s0
+
+
+service los-tv-props /system/bin/getprop
+    class core
+    user root
+    group root
+    oneshot
+    stdio_to_kmsg
+
+on post-fs-data
+    mkdir /data/misc/los_tv_kmsg 0770 root root
+    start los-tv-kmsglog
+    start los-tv-props
+    exec - root root -- /system/bin/getprop
+
+# los-tv: make sure the installer service is started; PM blocks (30s per op)
+# when installd never registers.
+on boot
+    start installd
+    start vendor.gatekeeper-1-0
+    start gatekeeperd
+    start storaged
+
+# los-tv: record service states for diagnostics (visible after reboot).
+on property:init.svc.zygote=running
+    write /data/misc/los_tv_kmsg/svc_installd.txt ${init.svc.installd}
+    write /data/misc/los_tv_kmsg/svc_zygote.txt ${init.svc.zygote}
+    write /data/misc/los_tv_kmsg/svc_sf.txt ${init.svc.surfaceflinger}
+    write /data/misc/los_tv_kmsg/svc_storaged.txt ${init.svc.storaged}
