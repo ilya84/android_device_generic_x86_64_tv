@@ -1,11 +1,43 @@
 # surfaceflinger
 /dev/dri(/.*)?               u:object_r:gpu_device:s0
 /dev/tty0                    u:object_r:gpu_device:s0
-/(vendor|system/vendor)/lib{64}?/libgbm_mesa_wrapper.so     u:object_r:same_process_hal_file:s0
+/(vendor|system/vendor)/lib(64)?/libgbm_mesa_wrapper\.so     u:object_r:same_process_hal_file:s0
 /(vendor|system/vendor)/bin/hw/android\.hardware\.graphics\.allocator@4\.0-service\.minigbm_gbm_mesa        u:object_r:hal_graphics_allocator_default_exec:s0
-/(vendor|system/vendor)/lib(64)?/libgallium_dri\.so							u:object_r:same_process_hal_file:s0
 /(vendor|system/vendor)/bin/hw/android\.hardware\.graphics\.composer@2\.1-service-clone              u:object_r:hal_graphics_composer_default_exec:s0
 
 # Files in rootfs
 /boot(/.*)?       u:object_r:bootdir_file:s0
 /boot/efi(/.*)?       u:object_r:esp_file:s0
+/(vendor|system/vendor)/bin/hw/android\.hardware\.drm-service-lazy\.widevine u:object_r:hal_drm_clearkey_aidl_exec:s0
+
+# los-tv: x86 mesa/drm/GBM/vulkan — библиотеки, загружаемые в system-процессы
+/(vendor|system/vendor)/lib(64)?/libLLVM[0-9]*\.so        u:object_r:same_process_hal_file:s0
+/(vendor|system/vendor)/lib(64)?/libdrm(_intel|_radeon|_amdgpu)?\.so u:object_r:same_process_hal_file:s0
+/(vendor|system/vendor)/lib(64)?/libgallium_dri\.so        u:object_r:same_process_hal_file:s0
+/(vendor|system/vendor)/lib(64)?/libgbm_mesa\.so           u:object_r:same_process_hal_file:s0
+/(vendor|system/vendor)/lib(64)?/dri_gbm\.so               u:object_r:same_process_hal_file:s0
+/(vendor|system/vendor)/lib(64)?/hw/gralloc\..*\.so       u:object_r:same_process_hal_file:s0
+/(vendor|system/vendor)/lib(64)?/(hw/)?vulkan\.pastel\.so  u:object_r:same_process_hal_file:s0
+/(vendor|system/vendor)/lib(64)?/hw/android\.hardware\.sensors@1\.0-impl\.so u:object_r:same_process_hal_file:s0
+/system/bin/los-tv-kmsglog u:object_r:los_tv_kmsglog_exec:s0
+/system/bin/audio-rtp-sender u:object_r:audio_sender_exec:s0
+/data/misc/los_tv_kmsg(/.*)? u:object_r:los_tv_kmsg_data_file:s0
+/(vendor|system/vendor)/lib(64)?/libui\.so u:object_r:same_process_hal_file:s0
+/(vendor|system/vendor)/lib(64)?/android\.hardware\.graphics\.allocator@.*\.so u:object_r:same_process_hal_file:s0
+/(vendor|system/vendor)/lib(64)?/hw/android\.hardware\.graphics\.mapper@.*\.so u:object_r:same_process_hal_file:s0
+/(vendor|system/vendor)/lib(64)?/hw/android\.hardware\.graphics\.allocator@.*\.so u:object_r:same_process_hal_file:s0
+/(vendor|system/vendor)/lib(64)?/libminigbm.*\.so u:object_r:same_process_hal_file:s0
+/(vendor|system/vendor)/lib(64)?/libgrallocusage\.so u:object_r:same_process_hal_file:s0
+
+# los-tv: x86 light HAL (AOSP rules only cover .lineage/.example)
+/(vendor|system/vendor)/bin/hw/android\.hardware\.light-service\.x86 u:object_r:hal_light_default_exec:s0
+
+# los-tv: x86 vendor HAL variants not covered by AOSP file_contexts.
+/(vendor|system/vendor)/bin/hw/android\.hardware\.gatekeeper@1\.0-service.* u:object_r:hal_gatekeeper_default_exec:s0
+/(vendor|system/vendor)/bin/hw/android\.hardware\.graphics\.allocator@4\.0-service.* u:object_r:hal_graphics_allocator_default_exec:s0
+/(vendor|system/vendor)/bin/hw/android\.hardware\.graphics\.composer@2\.1-drmfb-service u:object_r:hal_graphics_composer_default_exec:s0
+/(vendor|system/vendor)/bin/hw/android\.hardware\.media\.c2-ffmpeg-service u:object_r:mediacodec_exec:s0
+
+# los-tv: /vendor/odm/etc/selinux (odm_seapp_contexts, odm_mac_permissions.xml)
+# must be readable by zygote/system_server; vendor_file is not.
+/(vendor|system/vendor)/odm/etc/selinux(/.*)? u:object_r:vendor_configs_file:s0

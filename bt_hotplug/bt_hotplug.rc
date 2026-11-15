@@ -1,0 +1,11 @@
+# los-tv: recover Bluetooth if the USB HCI adapter is re-enumerated.
+# The Bluetooth stack can keep a stale "connected" state when the dongle
+# disappears and returns (e.g., a pet touches it); the watcher toggles
+# Bluetooth so the stack re-binds to the fresh /dev/hciX.
+#
+# NOTE: this init build does not register service blocks from
+# /system/etc/init (see addon-autorestore.rc).  Use exec_background: the
+# watcher never exits, and a plain "sh -c ... &" is killed together with the
+# exec service's process group when the short-lived shell exits.
+on property:sys.boot_completed=1
+    exec_background u:r:su:s0 root root -- /system/bin/sh /system/bin/bt_hotplug.sh

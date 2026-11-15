@@ -1,18 +1,3 @@
-#
-# Copyright (C) 2014-2016 The Android-x86 Open Source Project
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
 
 PRODUCT_DIR := $(dir $(lastword $(filter-out device/common/%,$(filter device/%,$(ALL_PRODUCTS)))))
 
@@ -43,6 +28,11 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES_DEBUG += \
     bootctl
 
+# Смена uid для диагностики (только userdebug/eng), напр.:
+#   su 2000,2000 cmd notification post -T -t "Тема" tag "текст"
+PRODUCT_PACKAGES_DEBUG += \
+    su
+
 # Update engine
 PRODUCT_PACKAGES += \
     update_engine \
@@ -55,7 +45,7 @@ PRODUCT_PACKAGES_DEBUG += \
 PRODUCT_PROPERTY_OVERRIDES := \
     ro.lmk.kill_timeout_ms=100 \
     ro.arch=x86 \
-    persist.rtc_local_time=1 \
+    persist.rtc_local_time=0 \
     dalvik.vm.useautofastjni=true \
     ro.surface_flinger.max_frame_buffer_acquired_buffers=3 \
     audio.safemedia.bypass=true \
@@ -63,6 +53,13 @@ PRODUCT_PROPERTY_OVERRIDES := \
     persist.sys.zram_enabled=1 \
     external_storage.casefold.enabled=1 \
     external_storage.projid.enabled=1
+
+
+# Network OTA: optional custom Updater endpoint (lineage.updater.uri).
+# Build with LOS_TV_OTA_URI=https://atv.kacnep.ru/x86_64_tv.json.
+ifneq ($(LOS_TV_OTA_URI),)
+PRODUCT_PROPERTY_OVERRIDES += lineage.updater.uri=$(LOS_TV_OTA_URI)
+endif
 
 PRODUCT_SYSTEM_EXT_PROPERTIES += ro.setupwizard.mode=DISABLED
 
@@ -85,12 +82,16 @@ PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/ppp/ip-up:$(TARGET_COPY_OUT_SYSTEM)/etc/ppp/ip-up \
     $(LOCAL_PATH)/ppp/ip-down:$(TARGET_COPY_OUT_SYSTEM)/etc/ppp/ip-down \
     $(LOCAL_PATH)/ppp/peers/gprs:$(TARGET_COPY_OUT_SYSTEM)/etc/ppp/peers/gprs \
-    $(LOCAL_PATH)/media_codecs.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs.xml \
+    $(LOCAL_PATH)/metadata.keep:root/metadata/.keep \
+    frameworks/av/media/libstagefright/data/media_codecs_sw.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs.xml \
     $(LOCAL_PATH)/media_profiles.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_profiles_V1_0.xml \
     $(LOCAL_PATH)/fstab.internal.x86:$(TARGET_COPY_OUT_SYSTEM)/vendor/etc/fstab.internal.x86 \
     frameworks/av/media/libstagefright/data/media_codecs_google_c2.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_google_c2.xml \
     frameworks/av/media/libstagefright/data/media_codecs_google_c2_audio.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_google_c2_audio.xml \
     frameworks/av/media/libstagefright/data/media_codecs_google_c2_video.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_google_c2_video.xml \
+    $(LOCAL_PATH)/media_codecs_radeon.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_radeon.xml \
+    $(LOCAL_PATH)/media_codecs_radeon_c2_video.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_radeon_c2_video.xml \
+    $(LOCAL_PATH)/media_codecs_radeon_apex.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_radeon_apex.xml \
     external/mesa3d/src/util/00-mesa-defaults.conf:$(TARGET_COPY_OUT_VENDOR)/etc/drirc
 
 # Copy Vendor Files
@@ -100,7 +101,6 @@ PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.hardware.bluetooth.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.bluetooth.xml \
     frameworks/native/data/etc/android.hardware.bluetooth_le.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.bluetooth_le.xml \
     frameworks/native/data/etc/android.hardware.ethernet.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.ethernet.xml \
-    frameworks/native/data/etc/android.hardware.fingerprint.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.fingerprint.xml \
     frameworks/native/data/etc/android.hardware.gamepad.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.gamepad.xml \
     frameworks/native/data/etc/android.software.ipsec_tunnels.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.software.ipsec_tunnels.xml \
     frameworks/native/data/etc/android.hardware.location.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.location.xml \
@@ -112,8 +112,6 @@ PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.hardware.sensor.gyroscope.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.sensor.gyroscope.xml \
     frameworks/native/data/etc/android.hardware.sensor.light.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.sensor.light.xml \
     frameworks/native/data/etc/android.hardware.sensor.proximity.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.sensor.proximity.xml \
-    frameworks/native/data/etc/android.hardware.touchscreen.multitouch.distinct.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.touchscreen.multitouch.distinct.xml \
-    frameworks/native/data/etc/android.hardware.touchscreen.multitouch.jazzhand.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.touchscreen.multitouch.jazzhand.xml \
     frameworks/native/data/etc/android.hardware.usb.accessory.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.usb.accessory.xml \
     frameworks/native/data/etc/android.hardware.usb.host.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.usb.host.xml \
     frameworks/native/data/etc/android.hardware.wifi.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.wifi.xml \
@@ -152,6 +150,15 @@ endif
 PRODUCT_COPY_FILES += \
     $(if $(wildcard $(PRODUCT_DIR)init.recovery.$(TARGET_PRODUCT).rc),$(PRODUCT_DIR)init.recovery.$(TARGET_PRODUCT).rc,$(LOCAL_PATH)/init.recovery.x86.rc):$(TARGET_COPY_OUT_RECOVERY)/root/init.recovery.$(TARGET_PRODUCT).rc \
     $(if $(wildcard $(PRODUCT_DIR)init.recovery.sh),$(PRODUCT_DIR),$(LOCAL_PATH)/)init.recovery.sh:$(TARGET_COPY_OUT_RECOVERY)/root/system/etc/init.recovery.sh \
+    $(LOCAL_PATH)/addon/los-tv-addon.sh:$(TARGET_COPY_OUT_RECOVERY)/root/system/bin/los-tv-addon.sh \
+    $(LOCAL_PATH)/addon/los-tv-addon-boot.sh:$(TARGET_COPY_OUT_RECOVERY)/root/system/bin/los-tv-addon-boot.sh \
+    $(LOCAL_PATH)/addon/ndk-files.txt:$(TARGET_COPY_OUT_RECOVERY)/root/system/etc/los-tv-addon/ndk-files.txt \
+    $(LOCAL_PATH)/addon/android.hardware.drm-service-lazy.widevine.rc:$(TARGET_COPY_OUT_RECOVERY)/root/system/etc/los-tv-addon/android.hardware.drm-service-lazy.widevine.rc \
+    $(LOCAL_PATH)/addon/manifest_android.hardware.drm-service.widevine.xml:$(TARGET_COPY_OUT_RECOVERY)/root/system/etc/los-tv-addon/manifest_android.hardware.drm-service.widevine.xml \
+    $(LOCAL_PATH)/addon/privapp-permissions-com.android.vending.xml:$(TARGET_COPY_OUT_RECOVERY)/root/system/etc/los-tv-addon/privapp-permissions-com.android.vending.xml \
+    $(LOCAL_PATH)/addon/links.txt:$(TARGET_COPY_OUT_RECOVERY)/root/system/etc/los-tv-addon/links.txt \
+    $(LOCAL_PATH)/addon/links.txt:$(TARGET_COPY_OUT_SYSTEM)/etc/los-tv-addon/links.txt \
+    $(LOCAL_PATH)/addonapp/privapp-permissions-org.los.tv.addon.xml:$(TARGET_COPY_OUT_SYSTEM)/etc/permissions/privapp-permissions-org.los.tv.addon.xml \
     $(if $(wildcard $(PRODUCT_DIR)init.fstab.sh),$(PRODUCT_DIR),$(LOCAL_PATH)/)init.fstab.sh:$(TARGET_COPY_OUT_RECOVERY)/root/system/etc/init.fstab.sh \
 
 PRODUCT_TAGS += dalvik.gc.type-precise
@@ -212,7 +219,6 @@ $(call inherit-product-if-exists,hardware/libsensors/sensors.mk)
 $(call inherit-product-if-exists,$(LOCAL_PATH)/glodroid/device_glodroid.mk)
 
 ifeq ($(USE_LIBNDK_TRANSLATION_NB),true)
-$(call inherit-product-if-exists, vendor/google/emu-x86/target/libndk_translation.mk)
 $(call inherit-product-if-exists, vendor/google/emu-x86/target/native_bridge_arm_on_x86.mk)
 NDK_TRANSLATION_PREINSTALL := google
 PRODUCT_SYSTEM_DEFAULT_PROPERTIES += persist.sys.nativebridge=1
@@ -225,8 +231,6 @@ PRODUCT_SYSTEM_DEFAULT_PROPERTIES += persist.sys.nativebridge=1
 endif
 
 ifeq ($(ANDROID_USE_NDK_TRANSLATION),true)
-$(call inherit-product-if-exists, vendor/google/proprietary/ndk_translation-prebuilt/libndk_translation.mk)
-$(call inherit-product-if-exists, vendor/google/proprietary/ndk_translation-prebuilt/native_bridge_arm_on_x86.mk)
 PRODUCT_SYSTEM_DEFAULT_PROPERTIES += persist.sys.nativebridge=1
 endif
 
@@ -285,10 +289,130 @@ PRODUCT_REQUIRES_INSECURE_EXECMEM_FOR_SWIFTSHADER := true
 
 $(call inherit-product-if-exists, hardware/x86power/x86power.mk)
 
-# force memfd; default ashmem removed
-# and speedup first start, otherwise it longs for some hours
+# - force memfd; default ashmem removed
+# - speedup first start, otherwise it longs for some hours
+# - disable bad bluetooth remotes searching and synchroning at first start. remote that connect at this screen need re-pairing in settings
 PRODUCT_PROPERTY_OVERRIDES += \
     sys.use_memfd=true
     pm.dexopt.first-boot=verify \
     pm.dexopt.boot-after-ota=verify \
-    pm.dexopt.bg-dexopt=speed-profile
+    pm.dexopt.bg-dexopt=speed-profile \
+    ro.setupwizard.mode=DISABLED \
+    ro.setupwizard.enterprise=0 \
+    setupwizard.feature.baseline_setup=false
+
+# Софтверные видеодекодеры. Без них MediaCodec не имеет ни одного видео-декодера
+# (в образе отсутствуют c2.android.avc.decoder / c2.android.hevc.decoder).
+PRODUCT_PACKAGES += \
+    libcodec2_soft_avcdec \
+    libcodec2_soft_hevcdec
+
+# los-tv: native playback capture -> RTP L16 -> audiohub.
+PRODUCT_PACKAGES += \
+    audio-rtp-sender \
+    audio-rtp-sender-rc
+
+# 2026-10-11: HIDL DRM (android.hardware.drm@1.0-service) УДАЛЁН.
+# Причина: не может получить passthrough от AIDL-версии, падает с
+# "Error while registering drm service" и уходит в цикл перезапуска.
+# HIDL и AIDL DRM в этой версии Android несовместимы.
+
+# Первый запуск занимал ~25 мин. Часть свойств ниже конфликтует с
+# build/make/target/product/runtime_libart.mk (там стоит =true), поэтому их
+# задаём в vendor/build.prop: приоритет чтения system->vendor даст нужное
+# значение, а дубликатов в одном файле не будет.
+PRODUCT_SYSTEM_PROPERTIES += \
+    pm.dexopt.bg-dexopt=verify
+
+PRODUCT_VENDOR_PROPERTIES += \
+    dalvik.vm.dexopt.secondary=false \
+    dalvik.vm.dex2oat-minidebuginfo=false
+
+# --- BT: «протухшие» бонды пультов после перезагрузки (шаг 34, сборка №23) ---
+# Пульты шлют НАПРАВЛЕННУЮ рекламу (ADV_DIRECT_IND) на адрес хоста,
+# выученный при спаривании. С включённой LE-privacy хост каждый запуск
+# берёт НОВЫЙ случайный адрес (LE_Set_Random_Address) и подключается
+# own_type=1 (RPA) → цель рекламы не совпадает с InitA → пульт игнорирует
+# CONNECT_IND → 0x3e CONNECTION_FAILED_ESTABLISHMENT, ни одного PDU в ответ.
+# Разбор: data/2026-10-18-bt-bonds-snoop-analysis.txt, разд. 8–9.
+# false → btif_dm.cc:2356 BTM_BleConfigPrivacy(false) →
+# main/shim/acl_api.cc:74 ACL_ConfigureLePrivacy(false) → USE_PUBLIC_ADDRESS:
+# хост всегда предъявляет публичный BD_ADDR (08:8a:f1:51:dd:b3).
+PRODUCT_VENDOR_PROPERTIES += \
+    bluetooth.core.gap.le.privacy.enabled=false
+
+# --- Предустановленные сторонние приложения (2026-10-11) ---
+# Описаны в prebuilt/Android.bp через android_app_import с presigned,
+# то есть с originalsными подписями издателей.
+#
+#   FDroid  - магазин FOSS-приложений вместо Google Play
+#   YouTube TV / Wink / Кинопоиск - предустановка в /data (base + сплиты)
+# NewPipe удалён из сборки 2026-10-28: мобильный UI, на TV не работает.
+PRODUCT_PACKAGES += FDroid
+PRODUCT_PACKAGES += MicroGGmsCore
+# los-tv 2026-10-30: Play Store — только через add-on (priv-app),
+# в базовом образе его нет.
+
+# Сторонние APK из prebuilt/ объявляют опциональные uses-library,
+# которых нет среди модулей дерева:
+#   F-Droid -> androidx.window.extensions, androidx.window.sidecar
+#   Wink            -> android.ext.adservices, android.extensions.appfunctions
+# У android_app_import нет свойства optional_libs, поэтому сверить их
+# нечем, и штатная проверка enforce-uses-libraries падает.
+# Отключаем её для всего продукта - это штатный обходной путь AOSP.
+PRODUCT_BROKEN_VERIFY_USES_LIBRARIES := true
+
+# --- Widevine L3 DRM, x86_64 (2026-10-12) ---
+# Модули описаны в prebuilt/widevine/Android.bp.
+# Источники: vendor ChromeOS hatch (CDM, сервис AIDL) + system того же
+# образа (libprotobuf-cpp-lite.so). Обоснование и сверка символов —
+# в vendor/google/proprietary/widevine-prebuilt/Android.mk и STATE.md.
+#
+# ВНИМАНИЕ: ставит vendor-копию protobuf поверх системной.
+# Проверено статически (361/361 символ), но вживую не проверено.
+# los-tv 2026-10-30: Widevine убран из базового образа (add-on).
+# $(eval $(call once,widevine-prebuilt-modules,\
+#     $(LOCAL_PATH)/../../../vendor/google/proprietary/widevine-prebuilt/Android.mk))
+
+PRODUCT_PACKAGES += \
+    lpunpack_dev \
+    los-tv-msg \
+    los-tv-gpt \
+    preinstall-JellyfinTV \
+    preinstall-VLC \
+    addon-autorestore.sh \
+    addon-autorestore-rc \
+    los-tv-addon-check.sh \
+    los-tv-addon-notify.sh \
+    los-tv-addon-state-rc \
+    LosTvAddon \
+    preinstall-apps.sh \
+    preinstall-apps-rc \
+    checkin-enabler.sh \
+    checkin-enabler-rc \
+    play-store-fixups.sh \
+    play-store-fixups-rc \
+    display-fixups.sh \
+    display-fixups-rc \
+    tvres-notify.sh \
+    tvres-notify-rc
+
+# los-tv: диагностический логгер /dev/kmsg (только для отладки)
+PRODUCT_COPY_FILES += \
+    $(LOCAL_PATH)/kmsglog/los-tv-kmsglog:$(TARGET_COPY_OUT_SYSTEM)/bin/los-tv-kmsglog \
+    $(LOCAL_PATH)/kmsglog/los-tv-kmsglog.rc:$(TARGET_COPY_OUT_SYSTEM)/etc/init/los-tv-kmsglog.rc
+
+# los-tv: перезапуск Bluetooth при переподключении USB HCI-адаптера
+PRODUCT_COPY_FILES += \
+    $(LOCAL_PATH)/bt_hotplug/bt_hotplug.sh:$(TARGET_COPY_OUT_SYSTEM)/bin/bt_hotplug.sh \
+    $(LOCAL_PATH)/bt_hotplug/bt_hotplug.rc:$(TARGET_COPY_OUT_SYSTEM)/etc/init/bt_hotplug.rc
+
+# los-tv: EGL под enforcing (init.sh не может запуститься: init+execute_no_trans запрещён)
+PRODUCT_VENDOR_PROPERTIES += ro.hardware.egl=mesa
+
+# los-tv: slow x86 TV hardware; allow PM/boot phases to exceed the
+# default 60s watchdog window without killing system_server.
+PRODUCT_PROPERTY_OVERRIDES += ro.hw_timeout_multiplier=3
+
+# los-tv: boot animation is enabled (was disabled while debugging the
+# enforcing bring-up). debug.sf.nobootanimation=1 must not be set.

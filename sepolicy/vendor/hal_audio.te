@@ -1,0 +1,7 @@
+
+
+# los-tv: audio HAL FMQ uses libcutils ashmem->memfd on kernels without
+# /dev/ashmem; the probe ftruncate()s a tmpfs memfd and queries its size.
+allow hal_audio_default tmpfs:file rw_file_perms;
+allow hal_audio_default tmpfs:file setattr;
+allowxperm hal_audio_default tmpfs:file ioctl { ASHMEM_GET_SIZE };

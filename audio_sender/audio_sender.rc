@@ -1,0 +1,17 @@
+# los-tv: native playback capture -> RTP L16 -> audiohub (192.168.5.150:5004).
+# Runs as uid media: platform.xml grants that uid CAPTURE_AUDIO_OUTPUT, and
+# audioserver treats it as a media-server uid for recording policy.
+service audio-rtp-sender /system/bin/audio-rtp-sender --host 192.168.5.150 --port 5004
+    class core
+    user media
+    group audio inet
+    seclabel u:r:audio_sender:s0
+    disabled
+
+# Stock mediametrics is not started on this ROM; libmedia waits 5 s for
+# media.metrics twice per new audio process.  Starting it removes that delay.
+on boot
+    start mediametrics
+
+on property:sys.boot_completed=1
+    start audio-rtp-sender

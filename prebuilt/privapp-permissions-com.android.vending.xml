@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Привилегии Google Play Store.
+
+  Без них приложение падает при старте:
+      SecurityException: You either need MANAGE_USERS or CREATE_USERS
+      permission to: query users
+        at android.os.UserManager.getUserCount()
+        at com.android.server.pm.UserManagerService.checkCreateUsersPermission
+
+  Список = все signature|privileged разрешения, которые Play Store запрашивает
+  в системе. Если в списке НЕТ ХОТЯ БЫ ОДНОГО запрошенного privileged-разрешения
+  — system_server падает с IllegalStateException в AppIdPermissionPolicy.onSystemReady
+  (ro.control_privapp_permissions=enforce). Лишние записи безвредны.
+
+  Актуально для TV-сборки Play Store 53.4.17 (vc 85341728). Набор вычислен так:
+  запрошенные APK разрешения ∩ protectionLevel, содержащий "privileged".
+  По сравнению с мобильной 52.9.21 добавлены ACCESS_DOWNLOAD_MANAGER и
+  ACCESS_DOWNLOAD_MANAGER_ADVANCED; MANAGE_ACCOUNTS/QUERY_ALL_PACKAGES/
+  SEND_SMS_NO_CONFIRMATION новая сборка не просит, но они оставлены (безвредно).
+
+  ВАЖНО: файл ОБЯЗАН быть обёрнут в <permissions>...</permissions>.
+  SystemConfig.readPermissionsFromXml (frameworks/base/.../SystemConfig.java:871)
+  бросает XmlPullParserException, если первый тег — не <permissions> или
+  <config>. Без обёртки файл молча не парсится → allowlist пуст → краш.
+-->
+<permissions>
+    <privapp-permissions package="com.android.vending">
+        <!-- запуск, учётные записи, пользователи -->
+        <permission name="android.permission.MANAGE_USERS"/>
+        <permission name="android.permission.MANAGE_ACCOUNTS"/>
+        <permission name="android.permission.GET_ACCOUNTS_PRIVILEGED"/>
+        <permission name="android.permission.INTERACT_ACROSS_USERS"/>
+        <permission name="android.permission.START_ACTIVITIES_FROM_BACKGROUND"/>
+        <!-- установка/удаление приложений (собственная функция магазина) -->
+        <permission name="android.permission.INSTALL_PACKAGES"/>
+        <permission name="android.permission.DELETE_PACKAGES"/>
+        <permission name="android.permission.PACKAGE_VERIFICATION_AGENT"/>
+        <permission name="android.permission.QUERY_ALL_PACKAGES"/>
+        <permission name="android.permission.CHANGE_COMPONENT_ENABLED_STATE"/>
+        <permission name="android.permission.FORCE_STOP_PACKAGES"/>
+        <permission name="android.permission.PACKAGE_USAGE_STATS"/>
+        <!-- добавлено для TV-сборки 53.4.17 (мобильная 52.9.21 их не просила) -->
+        <permission name="android.permission.ACCESS_DOWNLOAD_MANAGER"/>
+        <permission name="android.permission.ACCESS_DOWNLOAD_MANAGER_ADVANCED"/>
+        <!-- состояние системы -->
+        <permission name="android.permission.WRITE_SECURE_SETTINGS"/>
+        <permission name="android.permission.DUMP"/>
+        <permission name="android.permission.REBOOT"/>
+        <permission name="android.permission.UPDATE_DEVICE_STATS"/>
+        <permission name="android.permission.BACKUP"/>
+        <permission name="android.permission.BATTERY_STATS"/>
+        <permission name="android.permission.CLEAR_APP_CACHE"/>
+        <permission name="android.permission.LOADER_USAGE_STATS"/>
+        <permission name="android.permission.GET_APP_OPS_STATS"/>
+        <permission name="android.permission.ALLOCATE_AGGRESSIVE"/>
+        <permission name="android.permission.CONNECTIVITY_INTERNAL"/>
+        <permission name="android.permission.MANAGE_ROLLBACKS"/>
+        <permission name="android.permission.CHANGE_OVERLAY_PACKAGES"/>
+        <permission name="android.permission.CHANGE_DEVICE_IDLE_TEMP_WHITELIST"/>
+        <!-- UI/статус-бар, задачи -->
+        <permission name="android.permission.STATUS_BAR"/>
+        <permission name="android.permission.HIDE_STATUS_BAR_NOTIFICATION"/>
+        <permission name="android.permission.REAL_GET_TASKS"/>
+        <permission name="android.permission.SUBSTITUTE_NOTIFICATION_APP_NAME"/>
+        <!-- профили, грамматика, готовность устройства -->
+        <permission name="android.permission.READ_RUNTIME_PROFILES"/>
+        <permission name="android.permission.READ_SYSTEM_GRAMMATICAL_GENDER"/>
+        <permission name="android.permission.READ_PRIVILEGED_PHONE_STATE"/>
+        <permission name="android.permission.SEND_DEVICE_CUSTOMIZATION_READY"/>
+        <permission name="android.permission.SEND_SAFETY_CENTER_UPDATE"/>
+        <!-- совместимость, SMS, installer -->
+        <permission name="android.permission.OVERRIDE_COMPAT_CHANGE_CONFIG_ON_RELEASE_BUILD"/>
+        <permission name="android.permission.SEND_SMS_NO_CONFIRMATION"/>
+        <permission name="com.android.permission.USE_INSTALLER_V2"/>
+    </privapp-permissions>
+</permissions>

@@ -1,0 +1,7 @@
+# los-tv: modules live in /system/lib/modules (system_lib_file).
+allow ueventd system_lib_file:file r_file_perms;
+allow ueventd system_lib_file:system module_load;
+
+# ueventd requests modalias modules; the kernel usermode helper (modprobe)
+# then runs in the kernel domain (allowed in los-tv-init.te).
+allow ueventd kernel:system module_request;

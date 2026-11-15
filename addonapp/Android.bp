@@ -1,0 +1,21 @@
+// los-tv: плитка «Проприетарные компоненты» (Android TV).
+//
+// Системное приложение, подписанное платформенным ключом: нужно право REBOOT
+// (перезагрузка в recovery) и особый доступ MANAGE_EXTERNAL_STORAGE, который
+// выдаёт init-сервис los-tv-addon-check.sh (appops).
+
+java_import {
+    name: "los-tv-addon-zxing",
+    jars: ["libs/core-3.5.3.jar"],
+}
+
+android_app {
+    name: "LosTvAddon",
+    manifest: "AndroidManifest.xml",
+    srcs: ["src/**/*.java"],
+    resource_dirs: ["res"],
+    platform_apis: true,
+    certificate: "platform",
+    privileged: true,
+    static_libs: ["los-tv-addon-zxing"],
+}

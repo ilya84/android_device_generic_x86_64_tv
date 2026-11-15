@@ -15,6 +15,13 @@ sh_binary {
     recovery: true,
 }
 
+// los-tv: маркер режима для заголовка GRUB (sideload/recovery), см. init.x86.rc.
+sh_binary {
+    name: "los-tv-boot-mode.sh",
+    src: "los-tv-boot-mode.sh",
+    vendor: true,
+}
+
 sh_binary {
     name: "set_iptsd_device",
     src: "set_iptsd_device",

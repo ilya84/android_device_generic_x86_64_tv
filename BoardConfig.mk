@@ -1,7 +1,7 @@
 #
 # BoardConfig.mk for x86 platform
 #
-LOCAL_COMMON_TREE := device/generic/x86_64_tablet
+LOCAL_COMMON_TREE := device/generic/x86_64_tv
 
 # The generic product target doesn't have any hardware-specific pieces.
 TARGET_NO_BOOTLOADER := true
@@ -9,13 +9,21 @@ TARGET_CPU_ABI := x86_64
 TARGET_ARCH := x86_64
 TARGET_ARCH_VARIANT := sandybridge
 
-TARGET_2ND_CPU_ABI := x86
-TARGET_2ND_ARCH := x86
-TARGET_2ND_ARCH_VARIANT := sandybridge
 TARGET_CPU_VARIANT := generic
-TARGET_2ND_CPU_VARIANT := generic
 
 -include vendor/ax86-lite/ax86BoardConfig.mk
+
+# --- NDK translation Google: ARM64 -> x86_64 (2026-10-13) ---
+# Позволяет запускать arm64-приложения (YouTube TV, Kinopoisk arm64 и пр.)
+# на x86_64 через штатный механизм Android native bridge.
+#
+# Флаг обязан стоять ДО проверки ifeq ниже — иначе include не выполнится.
+# Пакет: vendor/google/proprietary/ndk_translation-prebuilt/ (образ эмулятора
+# Google API 35). Подробности и альтернативы — в STATE.md.
+#
+# Как выключить одной строкой: заменить true на false.
+ANDROID_USE_NDK_TRANSLATION := true
+
 
 ifeq ($(USE_LIBNDK_TRANSLATION_NB),true)
 include vendor/google/emu-x86/board/native_bridge_arm_on_x86.mk
@@ -30,12 +38,13 @@ include vendor/intel/proprietary/houdini/board/native_bridge_arm_on_x86.mk
 endif
 
 ifeq ($(ANDROID_USE_NDK_TRANSLATION),true)
-include vendor/google/proprietary/ndk_translation-prebuilt/board/native_bridge_arm_on_x86.mk
+# los-tv 2026-10-30: arm64-v8a больше не в списке ABI базового образа;
+# его добавляет add-on (build.prop).
+# include vendor/google/proprietary/ndk_translation-prebuilt/board/native_bridge_arm_on_x86.mk
 endif
 
 TARGET_CPU_ABI_LIST_64_BIT := $(TARGET_CPU_ABI) $(NATIVE_BRIDGE_ABI_LIST_64_BIT)
-TARGET_CPU_ABI_LIST_32_BIT := $(TARGET_2ND_CPU_ABI) $(NATIVE_BRIDGE_ABI_LIST_32_BIT)
-TARGET_CPU_ABI_LIST := $(TARGET_CPU_ABI) $(TARGET_2ND_CPU_ABI) $(NATIVE_BRIDGE_ABI_LIST_32_BIT) $(NATIVE_BRIDGE_ABI_LIST_64_BIT)
+TARGET_CPU_ABI_LIST := $(TARGET_CPU_ABI)
 
 TARGET_USERIMAGES_USE_EXT4 := true
 BOARD_USERDATAIMAGE_PARTITION_SIZE := 576716800
@@ -251,3 +260,39 @@ BUILD_FINGERPRINT := google/fugu/fugu:8.0.0/OPR2.170623.027/4397545:user/release
 # Include GloDroid components
 include $(LOCAL_COMMON_TREE)/glodroid/BoardConfig_glodroid.mk
 
+# fix hang on first boot
+BOARD_KERNEL_CMDLINE += random.trust_cpu=on
+
+# --- Bluetooth: USB-адаптер не должен засыпать (2026-10-14) ---
+# Регрессия: пульт Mi TV теряется через произвольное время, повторное
+# подключение не удаётся («подключено» → первое нажатие → разрыв).
+#
+# Причина найдена на устройстве:
+#     /sys/bus/usb/devices/1-2  MERCUSYS Bluetooth Adapter
+#         power/control            = auto
+#         power/autosuspend_delay_ms = 2000
+#         power/runtime_status     = suspended     ← спит при работающей системе
+#     bta_gattc_conn_cback: Disconnected … GATT_CONN_FAILED_ESTABLISHMENT
+#     btm_sec_disconnected: HCI_ERR_CONN_FAILED_ESTABLISHMENT
+# Контроллер физически уходит в suspend, поэтому повторное подключение
+# не проходит на уровне HCI. Мышь и клавиатура не страдают — ими постоянно
+# пользуются, ядро их не усыпляет (у них power/control = on).
+#
+# Лечение проверено вживую: echo on > /sys/bus/usb/devices/1-2/power/control
+# Постоянно — usbcore.autosuspend=-1: не зависит от порядка перечисления
+# USB-устройств. Для ТВ-бокса от mains-питания экономия энергии не нужна.
+BOARD_KERNEL_CMDLINE += usbcore.autosuspend=-1
+
+# --- priv-app со сжатым dex (2026-10-13) ---
+# Google выпускает Play Store со сжатым dex. soong для priv-app по умолчанию
+# распаковывает dex и падает на проверке:
+#     «PlayStore.apk: Contains compressed dex files and is privileged»
+# (build/soong/scripts/check_prebuilt_presigned_apk.py:40)
+# Распаковка не нужна — сжатый dex в priv-app работает штатно.
+#
+# Переменная ПРОДУКТОВАЯ и читается в build/make/core/soong_config.mk:164,
+# который подключается в config.mk:1324. BoardConfig.mk читается раньше
+# (config.mk:422 → envsetup.mk:368 → board_config.mk), поэтому переменная
+# должна стоять именно здесь. В device.mk она бесполезна — так и сделано
+# в android-x86, из-за чего Play Store и не собирался.
+DONT_UNCOMPRESS_PRIV_APPS_DEXS := true

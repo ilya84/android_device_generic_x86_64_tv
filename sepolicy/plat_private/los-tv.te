@@ -1,0 +1,70 @@
+# los-tv: x86 mesa/drm/vulkan-библиотеки помечены same_process_hal_file и
+# загружаются в system-процессы (full-treble coredomain по умолчанию их не видит).
+allow { surfaceflinger zygote system_server bootanim mediaswcodec } same_process_hal_file:file r_file_perms;
+allow { surfaceflinger zygote system_server bootanim mediaswcodec } same_process_hal_file:file execute;
+allow { surfaceflinger zygote system_server bootanim mediaswcodec } same_process_hal_file:dir r_dir_perms;
+
+# Skia RenderEngine JIT needs execmem; without it SF gets SIGSEGV
+# (SEGV_ACCERR) in RenderEngine and never registers SurfaceFlingerAIDL.
+allow surfaceflinger self:process execmem;
+
+# BootAnimation uses Skia; without execmem its rendering is slow/broken.
+allow bootanim self:process execmem;
+
+# init.fstab.sh creates /dev/block/by-name/misc-device via mknod.
+# Give it the same type AOSP uses for the misc partition so the boot
+# control HAL (hal_bootctl_default) may read/write it.
+type_transition init block_device:blk_file misc_block_device "misc-device";
+
+# Mesa/gbm identifies the radeon GPU via sysfs; without it mesa falls
+# back to llvmpipe (software) and SurfaceFlinger burns CPU.
+allow surfaceflinger sysfs:file r_file_perms;
+allow surfaceflinger udmabuf_device:chr_file rw_file_perms;
+
+# BootAnimation needs the same mesa/gbm GPU discovery as SurfaceFlinger.
+# With sysfs denied mesa falls back (artifacts), and udmabuf/memfd writes
+# are refused while it builds frames.
+allow bootanim sysfs:file r_file_perms;
+allow bootanim udmabuf_device:chr_file rw_file_perms;
+allow bootanim tmpfs:file write;
+
+# system services read vendor/debug properties on hot paths (property lookups
+# otherwise fail and are retried, adding latency).
+allow system_suspend sysfs:file r_file_perms;
+allow { system_server network_stack apexd } kernel:system module_request;
+
+# GPU PCI directory is labelled sysfs_gpu; traversing it needs dir search.
+allow { surfaceflinger bootanim } sysfs_gpu:dir r_dir_perms;
+allow appdomain sysfs_gpu:dir r_dir_perms;
+
+# Software codec output buffers / GPU detection in init.
+allow mediaswcodec udmabuf_device:chr_file rw_file_perms;
+allow init gpu_device:chr_file r_file_perms;
+
+# Video/audio buffers: udmabuf and ashmem memfds (system-side attributes).
+allow hal_graphics_allocator udmabuf_device:chr_file rw_file_perms;
+allow hal_audio tmpfs:file rw_file_perms;
+
+# mediaextractor reads the seccomp policy from the flattened media APEX.
+allow mediaextractor system_file:file r_file_perms;
+allow mediaextractor system_seccomp_policy_file:file r_file_perms;
+
+# sysfs_gpu is the GPU PCI device; thermal/codec probe it too.
+allow hal_thermal sysfs_gpu:dir r_dir_perms;
+allow hal_thermal sysfs_gpu:file r_file_perms;
+allow mediaswcodec sysfs_gpu:dir r_dir_perms;
+allow mediaswcodec sysfs_gpu:file r_file_perms;
+
+# mediaextractor opens the seccomp policy under the media APEX.
+allow mediaextractor system_file:dir r_dir_perms;
+allow mediaextractor system_seccomp_policy_file:dir r_dir_perms;
+
+# libui MemoryHeapBase / allocator memfds are generic tmpfs files.
+allow appdomain tmpfs:file rw_file_perms;
+allow hal_graphics_allocator tmpfs:file rw_file_perms;
+
+# los-tv: c2-ffmpeg runs in the mediacodec domain and needs the app
+# MessageQueue memfd plus persist.ffmpeg-codec2.* (default_prop).
+
+# c2-ffmpeg reads persist.ffmpeg-codec2.pixel_format; init.sh sets it.
+set_prop(init, vendor_ffmpeg_prop)

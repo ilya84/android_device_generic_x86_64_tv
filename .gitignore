@@ -1,3 +1,8 @@
-# Ignore downloaded ID files
-ids/*.ids
-wireless-regdb/regulatory.db*
+# Сторонние APK не публикуются в git (проприетарные/крупные).
+# Источники и sha256 — в prebuilt/README.md.
+prebuilt/*.apk
+prebuilt/*/*.apk
+prebuilt/*.apkm
+prebuilt/*/*.apkm
+prebuilt/*.bak
+*.bak

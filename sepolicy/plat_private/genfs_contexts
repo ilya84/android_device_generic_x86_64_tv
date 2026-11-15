@@ -1,2 +1,7 @@
-genfscon virtiofs / u:object_r:virtiofs:s0
-genfscon ntfs3 / u:object_r:ntfs3:s0
+# los-tv: GPU PCI device attributes (vendor/device/uevent) are read by Mesa
+# inside app processes to pick the hardware driver (radeonsi/i915).  The
+# generic sysfs label denies that, so apps fell back to llvmpipe (software)
+# and the whole UI crawled.  Label the GPU PCI functions as sysfs_gpu;
+# appdomain already has read-only access to sysfs_gpu.
+genfscon sysfs /devices/pci0000:00/0000:00:01.0 u:object_r:sysfs_gpu:s0
+genfscon sysfs /devices/pci0000:00/0000:00:02.0 u:object_r:sysfs_gpu:s0

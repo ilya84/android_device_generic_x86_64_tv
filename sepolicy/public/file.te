@@ -1,2 +1,6 @@
 type virtiofs, sdcard_type, fs_type, mlstrustedobject;
 type ntfs3, sdcard_type, fs_type, mlstrustedobject;
+
+# /boot/grub: init/system_app and the boot control HAL read/write android.cfg.
+# Public because the vendor bootctl HAL also needs it.
+type bootdir_file, file_type;

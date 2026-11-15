@@ -38,13 +38,27 @@ on fs
     mount_all /fstab.${ro.hardware}
 
 on post-fs
+    # los-tv: /boot is a separate ext4 mount and is not covered by the root
+    # restorecon. Label it and /boot/grub so the bootctl HAL can update
+    # android.cfg when switching A/B slots (otherwise unlabeled:dir denial).
+    restorecon /boot
+    restorecon_recursive /boot/grub
     exec u:r:init:s0 -- /system/bin/logwrapper /system/bin/sh /system/etc/init.sh
 
 on post-fs
     chmod 0664 /dev/ion
     chown system system /dev/ion
 
+# radeon: codec lists live in the swcodec APEX too, swap them in after apexd
+on property:apex.all.ready=true
+    exec u:r:init:s0 -- /system/bin/logwrapper /system/bin/sh /system/etc/init.sh apexcodecs
+
 on post-fs-data
+    # los-tv: HAL Widevine ставится add-on из recovery с меткой vendor_file;
+    # к началу Android перемаркируем его в AIDL-DRM exec-тип, чтобы init
+    # сделал переход в домен hal_drm_clearkey_aidl.
+    restorecon /vendor/bin/hw/android.hardware.drm-service-lazy.widevine
+    restorecon /vendor/etc/init/android.hardware.drm-service-lazy.widevine.rc
     # Create the directories used by the Wireless subsystem
     mkdir /data/vendor/wifi 0771 wifi wifi
     mkdir /data/vendor/wifi/wpa 0770 wifi wifi
@@ -62,6 +76,9 @@ on post-fs-data
     mkdir /data/vendor/thermal-daemon 0660 system system
 
 on boot
+    # los-tv: update_engine is disabled in AOSP rc and the
+    # ro.boot.slot_suffix property trigger does not fire on this init.
+    start update_engine
     setprop ro.radio.use-ppp yes
     setprop status.battery.state Slow
     setprop status.battery.level 5
@@ -116,6 +133,7 @@ service kmsg_fetch /system/bin/sh /system/etc/init.sh kmsg
 service vendor.boot-mode-selection /vendor/bin/boot-mode-selection.sh ${sys.shutdown.requested}
     user root
     group root
+    seclabel u:r:su:s0
     disabled
     oneshot
 
@@ -182,6 +200,10 @@ on property:system_init.startsurfaceflinger=0
 on property:sys.boot_completed=1
     start zram_setup
     write /proc/sys/kernel/ctrl-alt-del 0
+    # los-tv: android.cfg may be recreated at shutdown after post-fs restorecon.
+    # Force the label again once boot is complete; bootctl HAL needs it later.
+    exec u:r:init:s0 -- /system/bin/restorecon -F /boot
+    exec u:r:init:s0 -- /system/bin/restorecon -R -F /boot/grub
     exec u:r:init:s0 -- /system/bin/logwrapper /system/bin/sh /system/etc/init.sh bootcomplete
 
 on property:net.dns1=*
@@ -193,6 +215,12 @@ on property:debug.logcat=1
 on property:sys.shutdown.requested=*
     start vendor.boot-mode-selection
     wait_for_prop vendor.boot-mode-selection.complete true
+
+# los-tv: заголовок основного пункта GRUB («to SideLoad» / «to Recovery»).
+# sys.powerctl содержит полный запрос: reboot,sideload / reboot,recovery.
+# initrd удаляет маркеры при следующей загрузке.
+on shutdown
+    exec u:r:su:s0 root root -- /vendor/bin/sh /vendor/bin/los-tv-boot-mode.sh
 
 on property:vendor.iptsd.device=*
     restart iptsd

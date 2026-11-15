@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- los-tv: разрешения для плитки «Проприетарные компоненты».
+     RECOVERY нужен для PowerManager.reboot("recovery"), REBOOT — для обычной
+     перезагрузки. В этой сборке (Android 16) signature-разрешения для
+     приложения, чья подпись не совпадает с подписью framework, выдаются
+     только через <signature-permissions>; privapp-allowlist оставлен для
+     привилегированных разрешений. -->
+<permissions>
+    <privapp-permissions package="org.los.tv.addon">
+        <permission name="android.permission.REBOOT" />
+        <permission name="android.permission.RECOVERY" />
+    </privapp-permissions>
+    <signature-permissions package="org.los.tv.addon">
+        <permission name="android.permission.REBOOT" />
+        <permission name="android.permission.RECOVERY" />
+    </signature-permissions>
+</permissions>

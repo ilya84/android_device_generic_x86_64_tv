@@ -7,6 +7,14 @@ klog() {
     echo "$0: $@" > /dev/kmsg
 }
 
+# los-tv: the temp file created by the shell has no SELinux label. Relabel it
+# after every rewrite, otherwise bootctl HAL cannot read/write android.cfg
+# under Enforcing (unlabeled:dir/file denial).
+fix_cfg_label() {
+    chcon u:object_r:bootdir_file:s0 "$CFG_PATH" 2>/dev/null || \
+        restorecon -F "$CFG_PATH" 2>/dev/null || true
+}
+
 if [ -z "$CFG_PATH" ]; then
     if [ -f "/boot/grub/android.cfg" ]; then
         CFG_PATH="/boot/grub/android.cfg"
@@ -27,15 +35,22 @@ if [ ! -w "$CFG_PATH" ]; then
 fi
 
 # Determine boot mode from first argument
-REASON=$(echo -n "$1" | cut -c 2-)
+REASON="$1"
 case "$REASON" in
-    recovery|recovery-update)
+    *recovery*)
         new_mode="recovery"
         ;;
     *)
         new_mode="normal"
         ;;
 esac
+# los-tv: GRUB header suffix marker (removed by initrd on next boot)
+GRUBDIR=$(dirname "$CFG_PATH")
+case "$new_mode" in
+    recovery) touch "$GRUBDIR/mode-recovery" ;;
+    *) rm -f "$GRUBDIR/mode-recovery" ;;
+esac
+
 
 # First pass: Try to modify androidboot.mode
 found_android=0
@@ -45,7 +60,7 @@ while IFS= read -r line; do
         found_android=1
     fi
     printf '%s\n' "$line"
-done < "$CFG_PATH" > "$CFG_PATH.tmp" && mv "$CFG_PATH.tmp" "$CFG_PATH"
+done < "$CFG_PATH" > "$CFG_PATH.tmp" && mv "$CFG_PATH.tmp" "$CFG_PATH" && fix_cfg_label
 
 # Second pass: Fallback to MODE= if androidboot.mode wasn't found
 if [ "$found_android" -eq 0 ]; then
@@ -58,7 +73,7 @@ if [ "$found_android" -eq 0 ]; then
             found_mode=1
         fi
         printf '%s\n' "$line"
-    done < "$CFG_PATH" > "$CFG_PATH.tmp" && mv "$CFG_PATH.tmp" "$CFG_PATH"
+    done < "$CFG_PATH" > "$CFG_PATH.tmp" && mv "$CFG_PATH.tmp" "$CFG_PATH" && fix_cfg_label
 
     if [ "$found_mode" -eq 0 ]; then
         klog "Error: Neither androidboot.mode nor MODE= found in $CFG_PATH"

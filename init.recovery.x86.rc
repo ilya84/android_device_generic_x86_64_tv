@@ -12,6 +12,21 @@ service dhcpclient /system/bin/dhcpclient -i ${vendor.recovery.ethernet.dhcp.ifa
     oneshot
     disabled
 
+# los-tv step45: DHCP over RNDIS (USB-tethered phone).
+# init.recovery.sh insmods cdc_ether+rndis_host and, when usb0 appears,
+# sets vendor.recovery.rndis.iface=usb0; this trigger then brings the
+# interface up and starts dhcpclient on it.
+service dhcpclient_rndis /system/bin/dhcpclient -i usb0
+    user root
+    group root
+    seclabel u:r:dhcpclient:s0
+    oneshot
+    disabled
+
+on property:vendor.recovery.rndis.iface=usb0
+    ifup usb0
+    start dhcpclient_rndis
+
 on early-boot
     ifup ${vendor.recovery.ethernet.dhcp.iface:-eth0}
     start dhcpclient
