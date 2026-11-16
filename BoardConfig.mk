@@ -97,6 +97,8 @@ endif
 # the following variables could be overridden
 TARGET_PRELINK_MODULE := false
 TARGET_NO_KERNEL ?= false
+# This device has its own kernel build in build/tasks/kernel.mk.
+TARGET_NO_KERNEL_OVERRIDE := true
 TARGET_EXTRA_KERNEL_MODULES := 
 ifneq ($(filter efi_img,$(MAKECMDGOALS)),)
 TARGET_KERNEL_ARCH ?= x86_64
