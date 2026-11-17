@@ -170,6 +170,39 @@ function init_hal_brcm_wifi()
 	esac
 }
 
+# los-tv (step 2.2): на x86 с radeon + HDA модуль snd-hda-intel грузится
+# ueventd раньше, чем регистрируется radeon audio component.  Проба кодеков
+# падает ("Cannot probe codecs, giving up"), /proc/asound/cards пуст, и
+# AudioPolicyManager не создаётся: "Default device AUDIO_DEVICE_OUT_SPEAKER
+# is unreachable" → audioserver без политики → AudioRecord(REMOTE_SUBMIX)
+# возвращает -19 и RTP не работает.  К bootcomplete контроллер уже готов,
+# поэтому один раз перепривязываем его к драйверу и перезапускаем audioserver.
+# Проверено на e3000n: после rebind появляются card0 HDMI и card1 Generic,
+# RTP state=on.  Метка sysfs_hda — см. sepolicy/vendor/{genfs_contexts,los-tv.te}.
+function los_tv_hda_rebind()
+{
+	# Есть хотя бы одна не-HDMI карта (PCH/Generic/USB) — политика сможет
+	# открыть Speaker, ничего не трогаем.
+	if grep -E '^[[:space:]]*[0-9]+ \[' /proc/asound/cards 2>/dev/null | grep -qv HDMI; then
+		return 0
+	fi
+
+	local d b
+	for d in /sys/bus/pci/drivers/snd_hda_intel/????:*; do
+		[ -e "$d" ] || continue
+		b=$(basename "$d")
+		echo "init.sh: hda rebind $b" > /dev/kmsg
+		echo "$b" > /sys/bus/pci/drivers/snd_hda_intel/unbind 2>/dev/null
+		echo "$b" > /sys/bus/pci/drivers/snd_hda_intel/bind 2>/dev/null
+	done
+
+	if grep -E '^[[:space:]]*[0-9]+ \[' /proc/asound/cards 2>/dev/null | grep -qv HDMI; then
+		echo "init.sh: hda cards present, restart audioserver" > /dev/kmsg
+		stop audioserver
+		start audioserver
+	fi
+}
+
 function init_hal_audio_bootcomplete()
 {
 	if [ -e "/data/vendor/asound.state" ]; then
@@ -1021,6 +1054,9 @@ function do_bootcomplete()
     if [ "$POWER_NONBOOT_CPU_OFF" -ge 1 ]; then
         set_property power.nonboot-cpu-off 1
     fi
+
+	# los-tv: перепривязать HDA, если кодеки не успели пробнуться на boot
+	los_tv_hda_rebind
 
 	# initialize audio in bootcomplete
 	init_hal_audio_bootcomplete

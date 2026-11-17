@@ -1,2 +1,7 @@
 # DMI
 genfscon sysfs /devices/virtual/dmi/id				u:object_r:vendor_sysfs_dmi_id:s0
+
+# HDA rebind (los-tv): see los-tv.te.  init.sh rewrites these sysfs files at
+# bootcomplete when snd-hda-intel probed the codecs too early (radeon race).
+genfscon sysfs /bus/pci/drivers/snd_hda_intel/bind	u:object_r:sysfs_hda:s0
+genfscon sysfs /bus/pci/drivers/snd_hda_intel/unbind	u:object_r:sysfs_hda:s0

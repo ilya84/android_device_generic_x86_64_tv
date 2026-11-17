@@ -86,6 +86,18 @@ allow init sysfs_gpu:file r_file_perms;
 allow init sysfs_gpu:lnk_file { read getattr };
 allow init sysfs:lnk_file { read getattr };
 
+# --- Enforcing boot fix #3 (2026-11-18, step 2.2) ---
+# radeon + HDA race: snd-hda-intel probes codecs before the radeon audio
+# component is registered, gives up and never retries.  /proc/asound/cards
+# stays empty, AudioPolicyManager deletes itself ("Default device
+# AUDIO_DEVICE_OUT_SPEAKER is unreachable"), audioserver has no policy and
+# AudioRecord(REMOTE_SUBMIX) fails with -19.  At bootcomplete the controller
+# is ready, so init.sh unbinds/binds it once.  sysfs:file open/write is a
+# neverallow for init, hence a private label for just these two files.
+type sysfs_hda, fs_type, sysfs_type;
+allow init sysfs_hda:dir r_dir_perms;
+allow init sysfs_hda:file w_file_perms;
+
 # bootanim маппит gralloc-memfd (tmpfs-тип домена allocator HAL).
 allow bootanim hal_graphics_allocator_default_tmpfs:file { read write map };
 allow bootanim tmpfs:file { map };
