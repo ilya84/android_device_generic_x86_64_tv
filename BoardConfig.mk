@@ -232,7 +232,10 @@ SYSTEM_EXT_PUBLIC_SEPOLICY_DIRS += $(LOCAL_COMMON_TREE)/sepolicy/public
 BOARD_VENDOR_SEPOLICY_DIRS += $(LOCAL_COMMON_TREE)/sepolicy/vendor
 
 TARGET_FLATTEN_APEX := true
-BOARD_SYSTEMIMAGE_PARTITION_SIZE := $(shell echo | awk '{printf "%.0f", 5.8 * 1000 * 1000 * 1000}')
+# 2026-11-18 (step 2.2): 5.8 GB left only 2 560 bytes of free space in
+# system.img.  Keep a real margin for the next fixes (installer/make-ab and
+# update_engine use the actual image size, not this constant).
+BOARD_SYSTEMIMAGE_PARTITION_SIZE := $(shell echo | awk '{printf "%.0f", 6.0 * 1000 * 1000 * 1000}')
 BOARD_RECOVERYIMAGE_PARTITION_SIZE := $(shell echo | awk '{printf "%.0f", 98 * 1000 * 1000}')
 TARGET_USERIMAGES_SPARSE_EXT_DISABLED := true
 BOARD_USES_OEMIMAGE := true
