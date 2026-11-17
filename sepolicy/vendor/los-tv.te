@@ -45,3 +45,27 @@ allow hal_graphics_composer_default self:netlink_kobject_uevent_socket create_so
 # drmfb-composer unbinds the framebuffer console before taking over the CRTC
 # (fbcon bound makes drmModePageFlip return EINVAL on radeon).
 allow hal_graphics_composer_default sysfs:file w_file_perms;
+
+# Enforcing boot (2026-11-17): the legacy celadon/mesa and nonplat policy
+# directories were commented out in BoardConfig.mk and never compiled.  The
+# device used to boot permissive, so the missing rules were invisible.  These
+# are the exact denials from the first Enforcing boot of the clean tree.
+# gralloc/allocator opens /dev/graphics and /dev/dri.
+allow hal_graphics_allocator_default graphics_device:dir r_dir_perms;
+allow hal_graphics_allocator_default graphics_device:chr_file rw_file_perms;
+allow hal_graphics_allocator_default gpu_device:dir r_dir_perms;
+allow hal_graphics_allocator_default gpu_device:chr_file rw_file_perms;
+allow hal_graphics_allocator_default sysfs_gpu:dir r_dir_perms;
+allow hal_graphics_allocator_default sysfs_gpu:file r_file_perms;
+
+# composer HAL is a HIDL vndbinder service and probes the GPU sysfs node.
+allow hal_graphics_composer_default vndbinder_device:chr_file { open read write ioctl map };
+allow hal_graphics_composer_default gpu_device:dir r_dir_perms;
+allow hal_graphics_composer_default gpu_device:chr_file rw_file_perms;
+allow hal_graphics_composer_default sysfs_gpu:dir r_dir_perms;
+allow hal_graphics_composer_default sysfs_gpu:file r_file_perms;
+
+# gralloc buffers arrive as memfds in the allocator HAL per-domain tmpfs
+# type; SurfaceFlinger must map and write them (otherwise RenderEngine aborts
+# with "output buffer not gpu writeable").
+allow surfaceflinger hal_graphics_allocator_default_tmpfs:file { read write map };
