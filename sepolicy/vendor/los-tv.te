@@ -69,3 +69,23 @@ allow hal_graphics_composer_default sysfs_gpu:file r_file_perms;
 # type; SurfaceFlinger must map and write them (otherwise RenderEngine aborts
 # with "output buffer not gpu writeable").
 allow surfaceflinger hal_graphics_allocator_default_tmpfs:file { read write map };
+
+# --- Enforcing boot fix #2 (2026-11-17, OTA #4) ---
+# ueventd грузит модули из /system/lib/modules (system_lib_file); базовая
+# политика даёт только vendor_file. Без этого radeon.ko НЕ загружается,
+# init.sh видит только simpledrm и выбирает fbdev-композитор default_clone,
+# SurfaceFlinger уходит в цикл рестартов.
+allow ueventd system_lib_file:file r_file_perms;
+allow ueventd system_lib_file:system module_load;
+allow ueventd kernel:system module_request;
+
+# init.sh (GPU detection: lspci + readlink /sys/class/drm/card*/device/driver).
+# init sysfs:file open запрещён neverallow, поэтому только sysfs_gpu и lnk_file.
+allow init sysfs_gpu:dir r_dir_perms;
+allow init sysfs_gpu:file r_file_perms;
+allow init sysfs_gpu:lnk_file { read getattr };
+allow init sysfs:lnk_file { read getattr };
+
+# bootanim маппит gralloc-memfd (tmpfs-тип домена allocator HAL).
+allow bootanim hal_graphics_allocator_default_tmpfs:file { read write map };
+allow bootanim tmpfs:file { map };

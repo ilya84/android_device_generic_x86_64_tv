@@ -1,0 +1,6 @@
+# los-tv: composer3 service instances registered by the fbdev clone and the
+# drmfb composer fall back to default_android_service; allowing
+# default_android_service is neverallow-blocked.  Label them as the public
+# hal_graphics_composer_service so hal_client_domain(surfaceflinger) can find.
+android.hardware.graphics.composer3.IComposer/default_clone u:object_r:hal_graphics_composer_service:s0
+android.hardware.graphics.composer3.IComposer/drmfb u:object_r:hal_graphics_composer_service:s0
