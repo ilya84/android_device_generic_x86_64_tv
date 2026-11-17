@@ -196,23 +196,15 @@ function los_tv_hda_rebind()
 		echo "$b" > /sys/bus/pci/drivers/snd_hda_intel/bind 2>/dev/null
 	done
 
-	# Проба кодеков асинхронная: card1 появляется не сразу после bind.
-	# Без ожидания проверка ниже видит только HDMI (или пусто), audioserver
-	# не перезапускается, и AudioPolicyManager остаётся NULL (RTP -19).
-	i=0
-	while [ "$i" -lt 5 ]; do
-		if grep -E '^[[:space:]]*[0-9]+ \[' /proc/asound/cards 2>/dev/null | grep -qv HDMI; then
-			break
-		fi
-		sleep 1
-		i=$((i + 1))
-	done
-
-	if grep -E '^[[:space:]]*[0-9]+ \[' /proc/asound/cards 2>/dev/null | grep -qv HDMI; then
-		echo "init.sh: hda cards present, restart audioserver" > /dev/kmsg
-		stop audioserver
-		start audioserver
-	fi
+	# Проба кодеков асинхронная: card1 появляется примерно через 0.1–1 с
+	# после bind.  Перезапускаем audioserver безусловно (после короткой
+	# паузы): проверка /proc/asound/cards из init оказалась ненадёжной,
+	# а лишний restart на машине без звуковой карты безвреден.  Именно
+	# restart создаёт AudioPolicyManager уже с доступным Speaker.
+	sleep 2
+	echo "init.sh: restart audioserver after hda rebind" > /dev/kmsg
+	stop audioserver
+	start audioserver
 }
 
 function init_hal_audio_bootcomplete()
