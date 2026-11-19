@@ -427,8 +427,14 @@ function init_hal_gralloc()
 
 	case "$GPU" in
 		*virtio_gpu|*virtio-pci)
-			HWC=${HWC:-drm_minigbm}
-			GRALLOC=${GRALLOC:-minigbm_arcvm}
+			# QEMU/virtio-gpu: the minigbm composer expects the AIDL
+			# allocator, which this product does not start (only the
+			# HIDL 2.0 allocator is present).  Use the self-contained
+			# drmfb composer with gralloc.gbm instead; this is the
+			# legacy KMS path already used for radeon.
+			HWC=${HWC:-drmfb}
+			GRALLOC=${GRALLOC:-gbm}
+			HWC_HIDL=${HWC_HIDL:-drmfb}
 			#video=${video:-1280x768}
 			set_property ro.vendor.hwc.drm.present_fence_not_reliable true
 			;&
@@ -556,7 +562,7 @@ function init_hal_hwcomposer()
 	# on the CPU (~200 ms/frame).  Use drmfb-composer instead: legacy KMS
 	# page flip + real DRM vsync.  Gate on radeon so Intel/others keep the
 	# previous behaviour.
-	if [[ "$GPU" == *radeon* ]]; then
+	if [[ "$GPU" == *radeon* || "$GPU" == *virtio_gpu* || "$GPU" == *virtio-pci* ]]; then
 		export HWC_HIDL=${HWC_HIDL:-drmfb}
 	elif [ "$HWACCEL" == "0" ]; then
 		export HWC_HIDL=${HWC_HIDL:-default-2.1}
@@ -998,6 +1004,11 @@ function set_custom_timezone()
 function do_init()
 {
 	init_misc
+	if [ "$QEMU_VM" = "1" ]; then
+		set_property service.adb.tcp.port 5555
+		set_property sys.usb.configfs 0
+		set_property sys.usb.config adb
+	fi
 	set_custom_timezone
 	init_hal_audio
 	set_custom_ota
@@ -1131,6 +1142,10 @@ PRODUCT=$(cat $DMIPATH/product_name)
 VENDOR=$(cat $DMIPATH/sys_vendor)
 UEVENT=$(cat $DMIPATH/uevent)
 GPU=$(readlink /sys/class/graphics/fb0/device/driver)
+
+# QEMU/virtio has no USB gadget; expose adbd over TCP for diagnostics.
+QEMU_VM=0
+[ "$VENDOR" = "QEMU" ] && QEMU_VM=1
 
 # import cmdline variables
 for c in `cat /proc/cmdline`; do
